@@ -3,6 +3,7 @@ import os
 from typing import List, Dict, Any, Optional, Generator, Union
 from .exceptions import DBError, ValidationError
 from .lock_manager import LockManager
+from .indexer import Indexer
 
 class Table:
     """Represents a database table with streaming storage and indexing.
@@ -16,8 +17,9 @@ class Table:
         foreign_keys (Dict[str, str]): Mapping of local columns to 'table.column' references.
         data_dir (str): Directory where table data is stored.
         file_path (str): Path to the .jsonl data file.
-        data (List[Dict[str, Any]]): In-memory cache of table rows.
-        index (Dict[Any, Dict[str, Any]]): Primary key index for O(1) lookups.
+        index_path (str): Path to the .idx index file.
+        data (List[Dict[str, Any]]): In-memory cache of table rows (maintained for backward compatibility).
+        indexer (Indexer): Manager for disk-based primary key lookup.
         lock_manager (LockManager): Manager for concurrency control.
     """
 
@@ -44,8 +46,9 @@ class Table:
         self.foreign_keys = foreign_keys or {}
         self.data_dir = data_dir
         self.file_path = os.path.join(self.data_dir, f"{table_name}.jsonl")
+        self.index_path = os.path.join(self.data_dir, f"{table_name}.idx")
         self.data = []
-        self.index = {} # Primary Key -> Row Data mapping
+        self.indexer = Indexer(self.index_path)
         
         # Initialize lock manager for concurrency control
         self.lock_manager = LockManager(data_dir=data_dir)
@@ -70,14 +73,50 @@ class Table:
                     yield json.loads(line)
 
     def _rebuild_index(self) -> None:
-        """Rebuilds the hash map index from the in-memory data."""
-        self.index = {}
-        if not self.primary_key:
+        """Rebuilds the disk-based binary index from the .jsonl file."""
+        if not self.primary_key or not os.path.exists(self.file_path):
             return
-        for row in self.data:
-            pk_val = row.get(self.primary_key)
-            if pk_val is not None:
-                self.index[pk_val] = row
+            
+        pk_offset_pairs = []
+        with open(self.file_path, "r") as f:
+            while True:
+                offset = f.tell()
+                line = f.readline()
+                if not line:
+                    break
+                if line.strip():
+                    try:
+                        row = json.loads(line)
+                        pk_val = row.get(self.primary_key)
+                        if pk_val is not None and isinstance(pk_val, int):
+                            pk_offset_pairs.append((pk_val, offset))
+                    except json.JSONDecodeError:
+                        pass
+        
+        self.indexer.rebuild(pk_offset_pairs)
+
+    def get_row_by_id(self, pk_id: int) -> Optional[Dict[str, Any]]:
+        """Retrieves a specific row by its primary key using the disk index.
+        
+        Args:
+            pk_id: The primary key value.
+            
+        Returns:
+            Optional[Dict[str, Any]]: The row data if found, else None.
+        """
+        offset = self.indexer.find(pk_id)
+        if offset is None:
+            return None
+            
+        try:
+            with open(self.file_path, "r") as f:
+                f.seek(offset)
+                line = f.readline()
+                if line:
+                    return json.loads(line)
+        except (IOError, json.JSONDecodeError):
+            return None
+        return None
 
     def load_data(self) -> None:
         """Reads data from the local .jsonl file and builds index.
@@ -87,7 +126,6 @@ class Table:
         """
         if not os.path.exists(self.file_path):
             self.data = []
-            self.index = {}
             return
         
         # Acquire lock before reading
@@ -124,6 +162,9 @@ class Table:
             
             # Atomic swap
             os.replace(temp_path, self.file_path)
+            
+            # Rebuild index since offsets have changed
+            self._rebuild_index()
         except (IOError, OSError) as e:
             if os.path.exists(temp_path):
                 os.remove(temp_path)
@@ -132,21 +173,28 @@ class Table:
             # Always release lock, even if an error occurs
             self.lock_manager.release_lock(self.table_name)
 
-    def append_row(self, row_data: Dict[str, Any]) -> None:
-        """Appends a single row to the .jsonl file.
+    def append_row(self, row_data: Dict[str, Any]) -> int:
+        """Appends a single row to the .jsonl file and returns its offset.
 
         Args:
             row_data: The row dictionary to append.
+
+        Returns:
+            int: The file offset where the row was written.
 
         Raises:
             DBError: If the append operation fails.
         """
         self.lock_manager.acquire_lock(self.table_name)
         try:
+            # Open in append mode, but we need to know the offset
+            # One way is to check size before appending
+            current_offset = os.path.getsize(self.file_path) if os.path.exists(self.file_path) else 0
             with open(self.file_path, "a") as f:
                 f.write(json.dumps(row_data) + "\n")
                 f.flush()
                 os.fsync(f.fileno())
+            return current_offset
         except (IOError, OSError) as e:
             raise DBError(f"Failed to append data to table '{self.table_name}': {e}")
         finally:
@@ -191,9 +239,9 @@ class Table:
                 if not isinstance(val, str):
                     raise TypeError(f"Type mismatch for column '{col}': expected str, got {type(val).__name__}.")
 
-        # Check primary key uniqueness
+        # Check primary key uniqueness using disk index
         pk_val = row_data.get(self.primary_key)
-        if pk_val in self.index:
+        if isinstance(pk_val, int) and self.indexer.find(pk_val) is not None:
             from .exceptions import DuplicateKeyError
             raise DuplicateKeyError(f"Duplicate primary key '{pk_val}' for table '{self.table_name}'.")
 
@@ -208,11 +256,11 @@ class Table:
                     raise UniqueConstraintError(f"Unique constraint violation: value '{val}' already exists in column '{col}'.")
 
         self.data.append(row_data)
-        if self.primary_key:
-            self.index[pk_val] = row_data
         
-        # Append to file instead of full rewrite
-        self.append_row(row_data)
+        # Append to file and update index
+        offset = self.append_row(row_data)
+        if self.primary_key and isinstance(pk_val, int):
+            self.indexer.append(pk_val, offset)
 
     def select_all(self, limit: Optional[int] = None) -> List[Dict[str, Any]]:
         """Returns all rows (list, but loaded via generator).
@@ -243,8 +291,10 @@ class Table:
             List[Dict[str, Any]]: List of matching row dictionaries.
         """
         if column == self.primary_key and operator == '=':
-            row = self.index.get(value)
-            return [row] if row else []
+            if isinstance(value, int):
+                row = self.get_row_by_id(value)
+                return [row] if row else []
+            # If not int, fallback to scan (index only supports int PKs for now)
         
         # Fallback to streaming scan for non-indexed columns or complex operators
         results = []
@@ -271,7 +321,6 @@ class Table:
         deleted_count = original_count - len(self.data)
         
         if deleted_count > 0:
-            self._rebuild_index()
             self.save_data()
         return deleted_count
 
@@ -298,8 +347,6 @@ class Table:
                 updated_count += 1
         
         if updated_count > 0:
-            if needs_index_rebuild:
-                self._rebuild_index()
             self.save_data()
         return updated_count
 

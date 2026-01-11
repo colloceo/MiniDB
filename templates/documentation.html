@@ -126,6 +126,18 @@ SELECT * FROM users JOIN departments ON users.department_id = departments.id</co
                     <pre><code class="sql">-- Find students enrolled in 'Python'
 SELECT * FROM students 
 WHERE id IN (SELECT student_id FROM enrollments WHERE course = 'Python')</code></pre>
+
+                    <h5 class="fw-bold mt-4 small text-uppercase">Aggregate Functions</h5>
+                    <p>MiniDB provides built-in support for standard SQL aggregates to perform calculations on your
+                        data. These functions are executed in a single pass for maximum efficiency.</p>
+                    <ul>
+                        <li><code>COUNT(*)</code> or <code>COUNT(col)</code> — Total row count or non-null values.</li>
+                        <li><code>SUM(col)</code> — Arithmetic total (numeric columns only).</li>
+                        <li><code>AVG(col)</code> — Arithmetic mean (numeric columns only).</li>
+                        <li><code>MIN(col) / MAX(col)</code> — Boundary values.</li>
+                    </ul>
+                    <pre><code class="sql">-- Combined Analysis
+SELECT AVG(salary), MAX(score), COUNT(*) FROM employees WHERE department = 'Sales'</code></pre>
                 </div>
 
                 <!-- UPDATE/DELETE -->

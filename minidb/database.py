@@ -317,7 +317,9 @@ class MiniDB:
                     else:
                         res = table.select_all(limit=limit)
                 
-                # Apply column projection
+                # Apply column projection or aggregates
+                if self._is_aggregate_query(columns):
+                    return self._apply_aggregates(res, columns, table)
                 return table.project_columns(res, columns)
             
             if cmd_type == 'DELETE':
@@ -461,7 +463,7 @@ class MiniDB:
                 }
             
                 
-        except (DBError, TypeError) as e:
+        except (DBError, TypeError, ValueError) as e:
             return f"Error: {e}"
         except Exception as e:
             return f"Unexpected Error: {e}"
@@ -473,6 +475,110 @@ class MiniDB:
             List[str]: List of table names.
         """
         return list(self.tables.keys())
+
+    def _is_aggregate_query(self, columns_str: str) -> bool:
+        """Determines if a SELECT clause contains aggregate functions.
+        
+        Args:
+            columns_str: The columns portion of the SQL query.
+            
+        Returns:
+            bool: True if an aggregate function is detected.
+        """
+        aggr_funcs = ['COUNT', 'SUM', 'AVG', 'MIN', 'MAX']
+        up_cols = columns_str.upper()
+        return any(func + '(' in up_cols for func in aggr_funcs)
+
+    def _apply_aggregates(self, rows: List[Dict[str, Any]], columns_str: str, table_obj: 'Table') -> List[Dict[str, Any]]:
+        """Calculates SQL aggregates (SUM, AVG, etc.) in a single pass.
+        
+        Args:
+            rows: The result set after filtering.
+            columns_str: The aggregate column specifications.
+            table_obj: The target Table object for type verification.
+            
+        Returns:
+            List[Dict[str, Any]]: A list containing a single row with the aggregate results.
+            
+        Raises:
+            ValueError: If an aggregate is applied to an incompatible column type.
+        """
+        import re
+        # Find all patterns like AGGR_FUNC(column)
+        pattern = re.compile(r'(\w+)\(([\w\*]+)\)', re.IGNORECASE)
+        aggr_specs = pattern.findall(columns_str)
+        
+        if not aggr_specs:
+            return []
+
+        # Initialize accumulators
+        accumulators = {}
+        for func_raw, col in aggr_specs:
+            func = func_raw.upper()
+            label = f"{func}({col})"
+            
+            # Validation: SUM and AVG require numeric columns
+            if func in ['SUM', 'AVG']:
+                col_type = table_obj.column_types.get(col)
+                if col_type == 'str':
+                    raise ValueError(f"Cannot compute {func} on non-numeric column '{col}' (type: STR)")
+            
+            if func == 'COUNT':
+                accumulators[label] = {'sum': 0}
+            elif func == 'SUM':
+                accumulators[label] = {'sum': 0}
+            elif func == 'AVG':
+                accumulators[label] = {'sum': 0, 'count': 0}
+            elif func == 'MIN':
+                accumulators[label] = {'min': float('inf')}
+            elif func == 'MAX':
+                accumulators[label] = {'max': float('-inf')}
+
+        # Single pass execution
+        total_filtered_rows = len(rows)
+        for row in rows:
+            for func_raw, col in aggr_specs:
+                func = func_raw.upper()
+                label = f"{func}({col})"
+                
+                if func == 'COUNT':
+                    if col == '*' or row.get(col) is not None:
+                        accumulators[label]['sum'] += 1
+                    continue
+                
+                val = row.get(col)
+                if val is not None:
+                    if func == 'SUM':
+                        accumulators[label]['sum'] += val
+                    elif func == 'AVG':
+                        accumulators[label]['sum'] += val
+                        accumulators[label]['count'] += 1
+                    elif func == 'MIN':
+                        if val < accumulators[label]['min']:
+                            accumulators[label]['min'] = val
+                    elif func == 'MAX':
+                        if val > accumulators[label]['max']:
+                            accumulators[label]['max'] = val
+
+        # Finalize results
+        result_row = {}
+        for func_raw, col in aggr_specs:
+            func = func_raw.upper()
+            label = f"{func}({col})"
+            acc = accumulators[label]
+            
+            if func == 'COUNT':
+                result_row[label] = acc['sum']
+            elif func == 'SUM':
+                result_row[label] = acc['sum'] if total_filtered_rows > 0 else 0
+            elif func == 'AVG':
+                result_row[label] = acc['sum'] / acc['count'] if acc.get('count', 0) > 0 else None
+            elif func == 'MIN':
+                result_row[label] = acc['min'] if acc['min'] != float('inf') else None
+            elif func == 'MAX':
+                result_row[label] = acc['max'] if acc['max'] != float('-inf') else None
+        
+        return [result_row]
 
     def _nested_loop_join(self, left_rows: List[Dict[str, Any]], right_rows: List[Dict[str, Any]], 
                           left_on: Tuple[str, str], right_on: Tuple[str, str]) -> List[Dict[str, Any]]:

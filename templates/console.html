@@ -77,13 +77,14 @@
         </div>
 
         {% elif result_type == 'table' %}
-        <div class="table-responsive">
+        <div class="table-responsive" style="max-height: 500px; overflow-y: auto;">
             <table class="table table-hover align-middle mb-0">
-                <thead class="bg-light">
+                <thead class="bg-light sticky-top" style="z-index: 10;">
                     <tr>
-                        {% if result_data %}
+                        {% if result_data and result_data[0] is mapping %}
                         {% for col in result_data[0].keys() %}
-                        <th class="py-3 px-4 text-uppercase small fw-bold text-muted" style="letter-spacing: 0.05em;">{{
+                        <th class="py-3 px-4 text-uppercase small fw-bold text-muted border-bottom"
+                            style="letter-spacing: 0.05em; background-color: #f8f9fa;">{{
                             col }}</th>
                         {% endfor %}
                         {% endif %}
@@ -92,13 +93,18 @@
                 <tbody>
                     {% for row in result_data %}
                     <tr style="font-family: 'Fira Code', monospace; font-size: 0.85rem;">
+                        {% if row is mapping %}
                         {% for val in row.values() %}
                         <td class="py-3 px-4 text-dark">{{ val }}</td>
                         {% endfor %}
+                        {% else %}
+                        <td class="py-3 px-4 text-dark">{{ row }}</td>
+                        {% endif %}
                     </tr>
                     {% else %}
                     <tr>
-                        <td colspan="100%" class="text-center py-5 text-muted italic">No data returned.</td>
+                        <td colspan="100%" class="text-center py-5 text-muted italic">No data returned or query produced
+                            no results.</td>
                     </tr>
                     {% endfor %}
                 </tbody>

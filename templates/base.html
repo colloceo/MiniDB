@@ -9,18 +9,48 @@
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
     <style>
+        html,
         body {
+            height: 100%;
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
             background-color: #f8f9fa;
             font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
         }
 
+        body {
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* Navbar Layout */
+        .navbar {
+            z-index: 1030;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            flex-shrink: 0;
+        }
+
+        /* Layout Container */
+        .main-wrapper {
+            display: flex;
+            flex: 1;
+            overflow: hidden;
+            width: 100%;
+        }
+
         /* Sidebar Styling */
         .sidebar {
-            min-height: 100vh;
+            width: 240px;
             background-color: #1a1d20;
             color: #ffffff;
-            padding-top: 1rem;
+            overflow-y: auto;
+            flex-shrink: 0;
+            display: flex;
+            flex-direction: column;
             box-shadow: inset -1px 0 0 rgba(255, 255, 255, .05);
+            scroll-behavior: smooth;
         }
 
         .sidebar .nav-link {
@@ -61,12 +91,10 @@
         }
 
         .content {
+            flex: 1;
+            overflow-y: auto;
             padding: 2rem;
-        }
-
-        .navbar {
-            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            background-color: #f8f9fa;
         }
 
         .navbar-brand {
@@ -75,13 +103,27 @@
             color: #0d6efd !important;
         }
 
-        /* Utility */
-        .shadow-xs {
-            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05) !important;
+        /* Styling for custom scrollbars to maintain premium feel */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
         }
 
-        .border-light-gray {
-            border-color: #dee2e6 !important;
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: rgba(0, 0, 0, 0.1);
+            border-radius: 10px;
+        }
+
+        .sidebar::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.1);
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: rgba(0, 0, 0, 0.2);
         }
     </style>
 </head>
@@ -98,82 +140,78 @@
         </div>
     </nav>
 
-    <div class="container-fluid">
-        <div class="row">
-            <!-- Sidebar -->
-            <nav class="col-md-3 col-lg-2 d-md-block sidebar px-0">
-                <div class="position-sticky">
-                    <!-- Section: General -->
-                    <div class="nav flex-column mt-2">
-                        <a href="/" class="nav-link {% if request.path == '/' %}active{% endif %}">
-                            <i class="fas fa-tachometer-alt me-2"></i> Dashboard
-                        </a>
-                    </div>
-
-                    <!-- System Section -->
-                    <h6 class="sidebar-heading">
-                        System
-                    </h6>
-                    <nav class="nav flex-column">
-                        <a class="nav-link {% if request.path == '/sql-console' %}active{% endif %}"
-                            href="/sql-console">
-                            <i class="fas fa-terminal me-2"></i> SQL Console
-                        </a>
-                        <a class="nav-link {% if request.path == '/create_table' %}active{% endif %}"
-                            href="/create_table">
-                            <i class="fas fa-magic me-2"></i> Table Designer
-                        </a>
-                        <a class="nav-link {% if request.path == '/documentation' %}active{% endif %}"
-                            href="/documentation">
-                            <i class="fas fa-book me-2"></i> Documentation
-                        </a>
-                    </nav>
-
-                    <!-- Data Section -->
-                    <h6 class="sidebar-heading">
-                        Data
-                    </h6>
-                    <nav class="nav flex-column mb-2">
-                        {% if tables %}
-                        {% for table_name in tables %}
-                        <a class="nav-link {% if active_table == table_name or '/table/' + table_name in request.path %}active{% endif %}"
-                            href="/table/{{ table_name }}">
-                            <i class="fas fa-table me-2"></i> {{ table_name }}
-                        </a>
-                        {% endfor %}
-                        {% else %}
-                        <span class="nav-link small opacity-50">
-                            <i class="fas fa-inbox me-2"></i> No tables
-                        </span>
-                        {% endif %}
-                    </nav>
-
-                    <div class="px-3 mt-3">
-                        <a href="/create_table" class="btn btn-outline-light btn-sm w-100 py-1"
-                            style="font-size: 0.75rem; border-color: rgba(255,255,255,0.1);">
-                            <i class="fas fa-plus me-1"></i> New Table
-                        </a>
-                    </div>
-
-                    <hr class="sidebar-divider">
-
-                    <!-- Analysis Section -->
-                    <h6 class="sidebar-heading">
-                        Analysis
-                    </h6>
-                    <nav class="nav flex-column mb-4">
-                        <a class="nav-link {% if request.path == '/report' %}active{% endif %}" href="/report">
-                            <i class="fas fa-project-diagram me-2"></i> JOIN Report
-                        </a>
-                    </nav>
+    <div class="main-wrapper">
+        <!-- Sidebar -->
+        <nav class="sidebar">
+            <div class="w-100">
+                <!-- Section: General -->
+                <div class="nav flex-column mt-2">
+                    <a href="/" class="nav-link {% if request.path == '/' %}active{% endif %}">
+                        <i class="fas fa-tachometer-alt me-2"></i> Dashboard
+                    </a>
                 </div>
-            </nav>
 
-            <!-- Main Content -->
-            <main class="col-md-9 ms-sm-auto col-lg-10 px-md-4 content">
-                {% block content %}{% endblock %}
-            </main>
-        </div>
+                <!-- System Section -->
+                <h6 class="sidebar-heading">
+                    System
+                </h6>
+                <nav class="nav flex-column">
+                    <a class="nav-link {% if request.path == '/sql-console' %}active{% endif %}" href="/sql-console">
+                        <i class="fas fa-terminal me-2"></i> SQL Console
+                    </a>
+                    <a class="nav-link {% if request.path == '/create_table' %}active{% endif %}" href="/create_table">
+                        <i class="fas fa-magic me-2"></i> Table Designer
+                    </a>
+                    <a class="nav-link {% if request.path == '/documentation' %}active{% endif %}"
+                        href="/documentation">
+                        <i class="fas fa-book me-2"></i> Documentation
+                    </a>
+                </nav>
+
+                <!-- Data Section -->
+                <h6 class="sidebar-heading">
+                    Data
+                </h6>
+                <nav class="nav flex-column mb-2">
+                    {% if tables %}
+                    {% for table_name in tables %}
+                    <a class="nav-link {% if active_table == table_name or '/table/' + table_name in request.path %}active{% endif %}"
+                        href="/table/{{ table_name }}">
+                        <i class="fas fa-table me-2"></i> {{ table_name }}
+                    </a>
+                    {% endfor %}
+                    {% else %}
+                    <span class="nav-link small opacity-50">
+                        <i class="fas fa-inbox me-2"></i> No tables
+                    </span>
+                    {% endif %}
+                </nav>
+
+                <div class="px-3 mt-3">
+                    <a href="/create_table" class="btn btn-outline-light btn-sm w-100 py-1"
+                        style="font-size: 0.75rem; border-color: rgba(255,255,255,0.1);">
+                        <i class="fas fa-plus me-1"></i> New Table
+                    </a>
+                </div>
+
+                <hr class="sidebar-divider">
+
+                <!-- Analysis Section -->
+                <h6 class="sidebar-heading">
+                    Analysis
+                </h6>
+                <nav class="nav flex-column mb-4">
+                    <a class="nav-link {% if request.path == '/report' %}active{% endif %}" href="/report">
+                        <i class="fas fa-project-diagram me-2"></i> JOIN Report
+                    </a>
+                </nav>
+            </div>
+        </nav>
+
+        <!-- Main Content -->
+        <main class="content">
+            {% block content %}{% endblock %}
+        </main>
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>

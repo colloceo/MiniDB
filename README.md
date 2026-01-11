@@ -10,12 +10,12 @@ The system is organized into four modular layers, designed to mimic a production
 
 ```mermaid
 graph TD
-    UI[UI Layer: Web Dashboard] -->|HTTP POST| API[Flask Routes]
-    API -->|SQL String| P[SQL Parser]
-    P -->|Command Object| E[Execution Engine]
-    E -->|Read/Write| S[Storage Layer]
-    S -->|JSONL & Binary| D[(Data & .idx Files)]
-    E -.->|O(log N) Search| BI{Disk Binary Index}
+    UI["UI Layer: Web Dashboard"] -->|"HTTP POST"| API["Flask Routes"]
+    API -->|"SQL String"| P["SQL Parser"]
+    P -->|"Command Object"| E["Execution Engine"]
+    E -->|"Read/Write"| S["Storage Layer"]
+    S -->|"JSONL & Binary"| D[("Data & .idx Files")]
+    E -.->|"O(log N) Search"| BI{"Disk Binary Index"}
 ```
 
 - **UI Layer**: A Flask-based Admin Dashboard (`app.py`) with a premium, independent-scrolling layout for schema management, data entry, and SQL execution.

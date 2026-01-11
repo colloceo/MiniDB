@@ -94,6 +94,14 @@ To support multiple users/processes, MiniDB implements a global `LockManager`:
    python main.py
    ```
 
+### 🐳 Run with Docker
+If you have Docker installed, you can spin up the entire system with a single command:
+```bash
+docker-compose up --build
+```
+- **Web UI**: Access at `http://localhost:5000`
+- **Persistence**: Database files are automatically mapped to the `./data` folder on your host machine.
+
 ## ⚠️ Known Limitations (Prototype Scope)
 - **SQL Breadth**: Supports a subset of SQL syntax. Complex multi-level aggregate functions (SUM, AVG) are not yet implemented.
 - **Memory Residency**: While storage is streaming, the primary key index is kept in-memory for $O(1)$ speed. Extremely large keyspace may require a B-Tree file-baked index.

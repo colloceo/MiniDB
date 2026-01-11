@@ -248,10 +248,7 @@ MiniDB demonstrates a solid understanding of:
 
 The project is **production-ready** for educational and demonstration purposes, with all features tested and documented.
 
----
-
-**Submission Date**: January 11, 2026  
-**Status**: Ready for Evaluation ✅  
+---   
 **Contact**: Collins Odhiambo
 
 ---

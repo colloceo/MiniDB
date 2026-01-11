@@ -151,7 +151,7 @@ MiniDB> EXIT;
 
 ## 🙏 Acknowledgements
 This project was built as part of the Pesapal Junior Dev Challenge '26.
-- **Architecture & Logic**: Designed by Collins Odhiambo.
+- **Architecture & Logic**: Designed by Collins Odhiambo Otieno.
 - **Code Generation & Optimization**: AI (Gemini 2.0) assisted in developing regex patterns, refactoring algorithms, and generating premium UI components.
 
 Built with code, sweat, and Python.

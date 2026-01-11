@@ -204,7 +204,7 @@ Through building MiniDB, I gained practical experience with:
 
 ## 🙏 Acknowledgements
 
-**Developer**: Collins Odhiambo (Collins Otieno)  
+**Developer**: Collins Odhiambo Otieno  
 **Challenge**: Pesapal Junior Dev Challenge '26  
 **AI Tools Used**: Gemini 2.0, Claude, ChatGPT  
 **AI Usage**: Code generation, optimization, and testing (all reviewed and verified)
@@ -253,7 +253,7 @@ MiniDB demonstrates a solid understanding of:
 The project is **production-ready** for educational and demonstration purposes, with all features tested and documented.
 
 ---   
-**Contact**: Collins Odhiambo
+**Contact**: Collins Odhiambo Otieno
 
 ---
 

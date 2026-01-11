@@ -138,6 +138,10 @@ class MiniDB:
             parsed = self.parser.parse(query_string)
             cmd_type = parsed['type']
             
+            if cmd_type == 'SHOW_TABLES':
+                table_list = self.get_tables()
+                return [{'table_name': name} for name in table_list]
+
             # Transaction commands
             if cmd_type == 'BEGIN':
                 return self.transaction.begin()
@@ -166,8 +170,9 @@ class MiniDB:
                     parsed['right_on']
                 )
 
+            # Commands that require a target table
             table_name = parsed.get('table')
-            if not table_name:
+            if not table_name and cmd_type not in ['BEGIN', 'COMMIT', 'ROLLBACK', 'SHOW_TABLES', 'JOIN']:
                  raise DBError(f"Missing table name for command type {cmd_type}")
 
             if cmd_type == 'CREATE':
@@ -362,9 +367,6 @@ class MiniDB:
                     'foreign_keys': table.foreign_keys
                 }
             
-            if cmd_type == 'SHOW_TABLES':
-                table_list = self.get_tables()
-                return [{'table_name': name} for name in table_list]
                 
         except (DBError, TypeError) as e:
             return f"Error: {e}"

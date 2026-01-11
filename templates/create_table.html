@@ -290,42 +290,42 @@
         fkDiv.id = `fk-${fkCount}`;
 
         // Get available tables
-        const tables = {{ tables | tojson
+        const availableTables = {{ tables | tojson
     }};
 
     fkDiv.innerHTML = `
-        <div class="row g-2 align-items-center">
-            <div class="col-md-3">
-                <label class="form-label small mb-1 fw-bold text-muted">Local Column</label>
-                <select class="form-select form-select-sm" id="fkLocal-${fkCount}">
-                    <option value="">Select column...</option>
-                </select>
+            <div class="row g-2 align-items-center">
+                <div class="col-md-3">
+                    <label class="form-label small mb-1 fw-bold text-muted">Local Column</label>
+                    <select class="form-select form-select-sm" id="fkLocal-${fkCount}">
+                        <option value="">Select column...</option>
+                    </select>
+                </div>
+                <div class="col-md-1 text-center pt-3">
+                    <i class="fas fa-arrow-right text-muted opacity-50"></i>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label small mb-1 fw-bold text-muted">Ref Table</label>
+                    <select class="form-select form-select-sm" id="fkRefTable-${fkCount}" 
+                            onchange="updateRefColumns(${fkCount})">
+                        <option value="">Select table...</option>
+                        ${availableTables.map(t => `<option value="${t}">${t}</option>`).join('')}
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label small mb-1 fw-bold text-muted">Ref Column</label>
+                    <select class="form-select form-select-sm" id="fkRefCol-${fkCount}">
+                        <option value="">Select column...</option>
+                    </select>
+                </div>
+                <div class="col-md-2 text-end pt-3">
+                    <button type="button" class="btn btn-sm btn-remove" 
+                            onclick="removeForeignKey(${fkCount})">
+                        <i class="fas fa-trash"></i>
+                    </button>
+                </div>
             </div>
-            <div class="col-md-1 text-center pt-3">
-                <i class="fas fa-arrow-right text-muted opacity-50"></i>
-            </div>
-            <div class="col-md-3">
-                <label class="form-label small mb-1 fw-bold text-muted">Ref Table</label>
-                <select class="form-select form-select-sm" id="fkRefTable-${fkCount}" 
-                        onchange="updateRefColumns(${fkCount})">
-                    <option value="">Select table...</option>
-                    ${tables.map(t => `<option value="${t}">${t}</option>`).join('')}
-                </select>
-            </div>
-            <div class="col-md-3">
-                <label class="form-label small mb-1 fw-bold text-muted">Ref Column</label>
-                <select class="form-select form-select-sm" id="fkRefCol-${fkCount}">
-                    <option value="">Select column...</option>
-                </select>
-            </div>
-            <div class="col-md-2 text-end pt-3">
-                <button type="button" class="btn btn-sm btn-remove" 
-                        onclick="removeForeignKey(${fkCount})">
-                    <i class="fas fa-trash"></i>
-                </button>
-            </div>
-        </div>
-    `;
+        `;
 
     container.appendChild(fkDiv);
     updateLocalColumns(fkCount);

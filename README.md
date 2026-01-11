@@ -67,8 +67,8 @@ Leverages a global `LockManager` with pessimistic file-based locks to prevent ra
 ### Installation
 1. Clone the repository:
    ```bash
-   git clone https://github.com/collins-odhiambo/minidb.git
-   cd minidb
+   git clone https://github.com/colloceo/MiniDB.git
+   cd MiniDB
    ```
 2. Install dependencies: `pip install -r requirements.txt`
 

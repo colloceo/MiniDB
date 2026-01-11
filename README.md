@@ -72,35 +72,46 @@ Leverages a global `LockManager` with pessimistic file-based locks to prevent ra
 
 ## 🚀 How to Run
 
-MiniDB can be run locally using Python or as a containerized application using Docker.
+MiniDB can be run locally using Python or as a containerized application.
 
-### Option 1: Docker (Recommended)
+### Option 1: Docker Compose (Preferred)
 
-Isolate dependencies and run the full stack instantly.
+The easiest way to get started. This sets up the environment and persistent volumes automatically.
 
-1. **Build the Image:**
 ```bash
-docker build -t minidb .
-
+# Start the container in the background
+docker-compose up -d
 ```
 
-
-2. **Run the Container:**
-```bash
-docker run -p 5000:5000 -v $(pwd)/data:/app/data minidb
-
-```
-
-
-> **Note:** The `-v` flag persists your database files locally so data isn't lost when the container stops.
-
-
-3. **Access the Dashboard:**
-Open your browser to `http://localhost:5000`.
+*   **Access**: `http://localhost:5000`
+*   **Logs**: `docker-compose logs -f`
+*   **Stop**: `docker-compose down`
 
 ---
 
-### Option 2: Local Python Environment
+### Option 2: Docker CLI
+
+If you prefer using the standard Docker commands.
+
+1.  **Build the Image:**
+    ```bash
+    docker build -t minidb .
+    ```
+
+2.  **Run the Container:**
+    ```bash
+    # Linux / macOS / PowerShell
+    docker run -p 5000:5000 -v ${PWD}/data:/app/data minidb
+
+    # Windows (CMD)
+    docker run -p 5000:5000 -v %cd%/data:/app/data minidb
+    ```
+
+> **Note:** The `-v` flag creates a mapping between your computer and the container, ensuring your database files are saved even if the container is deleted.
+
+---
+
+### Option 3: Local Python Environment
 
 1. **Clone & Install:**
 ```bash

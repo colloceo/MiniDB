@@ -500,5 +500,7 @@ def documentation():
     return render_template("documentation.html")
 
 if __name__ == "__main__":
-    print("MiniDB Admin Dashboard starting at http://127.0.0.1:5000")
-    app.run(debug=True)
+    host = os.environ.get("FLASK_RUN_HOST", "127.0.0.1")
+    port = int(os.environ.get("FLASK_RUN_PORT", 5000))
+    print(f"MiniDB Admin Dashboard starting at http://{host}:{port}")
+    app.run(debug=True, host=host, port=port)

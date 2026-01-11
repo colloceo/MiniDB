@@ -62,19 +62,92 @@ MiniDB implements a robust Transaction Manager within the engine:
 ### 7. Concurrency: Multi-Process File Locking
 Leverages a global `LockManager` with pessimistic file-based locks to prevent race conditions during concurrent write operations across multiple processes.
 
+Here is the updated **"How to Run"** section for your README.
+
+It now includes professional instructions for **Docker** (proving you know containerization) and the **CLI/REPL** (proving the tool works without a GUI).
+
+**Copy and replace the existing "How to Run" section with this:**
+
+---
+
 ## 🚀 How to Run
 
-### Installation
-1. Clone the repository:
-   ```bash
-   git clone https://github.com/colloceo/MiniDB.git
-   cd MiniDB
-   ```
-2. Install dependencies: `pip install -r requirements.txt`
+MiniDB can be run locally using Python or as a containerized application using Docker.
 
-### Running the App
-1. Start the Web Admin Dashboard: `python app.py` (Visit `http://127.0.0.1:5000`)
-2. CLI mode: `python main.py`
+### Option 1: Docker (Recommended)
+
+Isolate dependencies and run the full stack instantly.
+
+1. **Build the Image:**
+```bash
+docker build -t minidb .
+
+```
+
+
+2. **Run the Container:**
+```bash
+docker run -p 5000:5000 -v $(pwd)/data:/app/data minidb
+
+```
+
+
+> **Note:** The `-v` flag persists your database files locally so data isn't lost when the container stops.
+
+
+3. **Access the Dashboard:**
+Open your browser to `http://localhost:5000`.
+
+---
+
+### Option 2: Local Python Environment
+
+1. **Clone & Install:**
+```bash
+git clone https://github.com/colloceo/MiniDB.git
+cd MiniDB
+pip install -r requirements.txt
+
+```
+
+
+2. **Start the Web Admin Dashboard:**
+```bash
+python app.py
+
+```
+
+
+* Runs the Flask server at `http://127.0.0.1:5000`.
+* Provides full UI for Table Management, Data Entry, and Reporting.
+
+
+3. **Start the CLI (Interactive REPL):**
+For direct database interaction without the Web UI:
+```bash
+python main.py
+
+```
+
+
+**Example CLI Session:**
+```sql
+MiniDB> CREATE TABLE users (id INT, name STR);
+Query OK.
+
+MiniDB> INSERT INTO users VALUES (1, "Collins");
+Query OK. 1 row affected.
+
+MiniDB> SELECT * FROM users;
++----+---------+
+| id | name    |
++----+---------+
+| 1  | Collins |
++----+---------+
+
+MiniDB> EXIT;
+
+```
 
 ## 🙏 Acknowledgements
 This project was built as part of the Pesapal Junior Dev Challenge '26.

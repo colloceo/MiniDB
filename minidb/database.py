@@ -209,23 +209,27 @@ class MiniDB:
                     return f"Row inserted into '{table_name}'."
             
             if cmd_type == 'SELECT':
+                limit = parsed.get('limit')
                 # SELECT always reads from current state
                 if self.transaction.in_transaction and table_name in self.transaction.staging_area:
                     # Read from staging area if modified in transaction
                     staged_data = self.transaction.staging_area[table_name]['data']
                     condition = parsed.get('condition')
+                    res = staged_data
                     if condition:
                         # Apply WHERE filter to staged data
-                        return [row for row in staged_data 
+                        res = [row for row in staged_data 
                                 if table._matches_condition(row, condition['column'], 
                                                            condition['operator'], condition['value'])]
-                    return staged_data
+                    if limit:
+                        return res[:limit]
+                    return res
                 else:
                     # Read from disk
                     condition = parsed.get('condition')
                     if condition:
-                        return table.select_where(condition['column'], condition['operator'], condition['value'])
-                    return table.select_all()
+                        return table.select_where(condition['column'], condition['operator'], condition['value'], limit=limit)
+                    return table.select_all(limit=limit)
             
             if cmd_type == 'DELETE':
                 condition = parsed['condition']
@@ -339,7 +343,7 @@ class MiniDB:
                 
                 table = self.tables[old_name]
                 old_file_path = table.file_path
-                new_file_path = os.path.join(self.data_dir, f"{new_name}.json")
+                new_file_path = os.path.join(self.data_dir, f"{new_name}.jsonl")
                 
                 # Rename the JSON file
                 if os.path.exists(old_file_path):

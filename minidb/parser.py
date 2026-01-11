@@ -8,7 +8,7 @@ class SQLParser:
             'CREATE': re.compile(r"CREATE\s+TABLE\s+(\w+)\s*\((.*)\)", re.IGNORECASE),
             'INSERT': re.compile(r"INSERT\s+INTO\s+(\w+)\s+VALUES\s*\((.*)\)", re.IGNORECASE),
             'SELECT_JOIN': re.compile(r"SELECT\s+\*\s+FROM\s+(\w+)\s+JOIN\s+(\w+)\s+ON\s+(\w+)\.(\w+)\s*=\s*(\w+)\.(\w+)", re.IGNORECASE),
-            'SELECT': re.compile(r"SELECT\s+\*\s+FROM\s+(\w+)(?:\s+WHERE\s+(\w+)\s*(>=|<=|!=|>|<|=)\s*(.*))?", re.IGNORECASE),
+            'SELECT': re.compile(r"SELECT\s+\*\s+FROM\s+(\w+)(?:\s+WHERE\s+(\w+)\s*(>=|<=|!=|>|<|=)\s*(.*?))?(?:\s+LIMIT\s+(\d+))?$", re.IGNORECASE),
             'DELETE': re.compile(r"DELETE\s+FROM\s+(\w+)\s+WHERE\s+(\w+)\s*(>=|<=|!=|>|<|=)\s*(.*)", re.IGNORECASE),
             'UPDATE': re.compile(r"UPDATE\s+(\w+)\s+SET\s+(\w+)\s*=\s*(.*)\s+WHERE\s+(\w+)\s*(>=|<=|!=|>|<|=)\s*(.*)", re.IGNORECASE),
             'ALTER_TABLE': re.compile(r"ALTER\s+TABLE\s+(\w+)\s+ADD\s+(\w+)\s+(\w+)", re.IGNORECASE),
@@ -101,7 +101,8 @@ class SQLParser:
             return {
                 'type': 'SELECT',
                 'table': table_name,
-                'condition': condition
+                'condition': condition,
+                'limit': int(match.group(5)) if len(match.groups()) >= 5 and match.group(5) else None
             }
         
         elif cmd_type == 'SELECT_JOIN':

@@ -133,17 +133,21 @@ print("\n[TEST 8] Verifying data file structure")
 print("-" * 70)
 
 import json
-with open("data/users.json", "r") as f:
-    file_data = json.load(f)
+file_data = []
+with open("data/users.jsonl", "r") as f:
+    for line in f:
+        if line.strip():
+            file_data.append(json.loads(line))
 
 print(f"Data file contains {len(file_data)} rows")
-print(f"First row keys: {list(file_data[0].keys())}")
+if file_data:
+    print(f"First row keys: {list(file_data[0].keys())}")
 
 expected_keys = {'id', 'name', 'email', 'age'}
-if set(file_data[0].keys()) == expected_keys:
+if file_data and set(file_data[0].keys()) == expected_keys:
     print("[v] PASS: Data file structure correct")
 else:
-    print(f"[x] FAIL: Expected keys {expected_keys}, got {set(file_data[0].keys())}")
+    print(f"[x] FAIL: Expected keys {expected_keys}, got {set(file_data[0].keys()) if file_data else 'None'}")
 
 print("\n" + "=" * 70)
 print("ALTER TABLE TESTS COMPLETE")

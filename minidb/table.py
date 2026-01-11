@@ -13,7 +13,7 @@ class Table:
         self.unique_columns = unique_columns or [] # list: [col, col]
         self.foreign_keys = foreign_keys or {} # dict: {local_col: 'ref_table.ref_col'}
         self.data_dir = data_dir
-        self.file_path = os.path.join(self.data_dir, f"{table_name}.json")
+        self.file_path = os.path.join(self.data_dir, f"{table_name}.jsonl")
         self.data = []
         self.index = {} # Primary Key -> Row Data mapping
         
@@ -24,6 +24,16 @@ class Table:
             os.makedirs(self.data_dir)
             
         self.load_data()
+
+    def load_rows(self):
+        """Generator to yield rows one by one from the .jsonl file."""
+        if not os.path.exists(self.file_path):
+            return
+        
+        with open(self.file_path, "r") as f:
+            for line in f:
+                if line.strip():
+                    yield json.loads(line)
 
     def _rebuild_index(self):
         """Rebuilds the hash map index from the in-memory data."""
@@ -36,7 +46,7 @@ class Table:
                 self.index[pk_val] = row
 
     def load_data(self):
-        """Reads data from the local JSON file and builds index."""
+        """Reads data from the local .jsonl file and builds index."""
         if not os.path.exists(self.file_path):
             self.data = []
             self.index = {}
@@ -46,8 +56,9 @@ class Table:
         self.lock_manager.acquire_lock(self.table_name)
         
         try:
-            with open(self.file_path, "r") as f:
-                self.data = json.load(f)
+            self.data = []
+            for row in self.load_rows():
+                self.data.append(row)
             self._rebuild_index()
         except (json.JSONDecodeError, IOError) as e:
             raise DBError(f"Failed to load data for table '{self.table_name}': {e}")
@@ -56,14 +67,15 @@ class Table:
             self.lock_manager.release_lock(self.table_name)
 
     def save_data(self):
-        """Writes the current data list to the JSON file atomically."""
+        """Writes the current data list to the .jsonl file line by line."""
         # Acquire lock before writing
         self.lock_manager.acquire_lock(self.table_name)
         
         temp_path = f"{self.file_path}.tmp"
         try:
             with open(temp_path, "w") as f:
-                json.dump(self.data, f, indent=4)
+                for row in self.data:
+                    f.write(json.dumps(row) + "\n")
                 f.flush()
                 # os.fsync requires a file descriptor
                 os.fsync(f.fileno())
@@ -76,6 +88,19 @@ class Table:
             raise DBError(f"Failed to save data for table '{self.table_name}': {e}")
         finally:
             # Always release lock, even if an error occurs
+            self.lock_manager.release_lock(self.table_name)
+
+    def append_row(self, row_data):
+        """Appends a single row to the .jsonl file."""
+        self.lock_manager.acquire_lock(self.table_name)
+        try:
+            with open(self.file_path, "a") as f:
+                f.write(json.dumps(row_data) + "\n")
+                f.flush()
+                os.fsync(f.fileno())
+        except (IOError, OSError) as e:
+            raise DBError(f"Failed to append data to table '{self.table_name}': {e}")
+        finally:
             self.lock_manager.release_lock(self.table_name)
 
     def insert_row(self, row_data):
@@ -117,27 +142,42 @@ class Table:
         for col in self.unique_columns:
             if col == self.primary_key: continue # Already checked
             val = row_data.get(col)
-            if any(r.get(col) == val for r in self.data):
-                from .exceptions import UniqueConstraintError
-                raise UniqueConstraintError(f"Unique constraint violation: value '{val}' already exists in column '{col}'.")
+            # Scan file for unique constraint
+            for r in self.load_rows():
+                if r.get(col) == val:
+                    from .exceptions import UniqueConstraintError
+                    raise UniqueConstraintError(f"Unique constraint violation: value '{val}' already exists in column '{col}'.")
 
         self.data.append(row_data)
         if self.primary_key:
             self.index[pk_val] = row_data
-        self.save_data()
+        
+        # Append to file instead of full rewrite
+        self.append_row(row_data)
 
-    def select_all(self):
-        """Returns all rows (copy)."""
-        return list(self.data)
+    def select_all(self, limit=None):
+        """Returns all rows (list, but loaded via generator)."""
+        results = []
+        for row in self.load_rows():
+            results.append(row)
+            if limit and len(results) >= limit:
+                break
+        return results
 
-    def select_where(self, column, operator, value):
+    def select_where(self, column, operator, value, limit=None):
         """Returns rows matching the condition. Uses index for '=' on primary key."""
         if column == self.primary_key and operator == '=':
             row = self.index.get(value)
             return [row] if row else []
         
-        # Fallback to full scan for non-indexed columns or complex operators
-        return [row for row in self.data if self._evaluate_condition(row.get(column), operator, value)]
+        # Fallback to streaming scan for non-indexed columns or complex operators
+        results = []
+        for row in self.load_rows():
+            if self._evaluate_condition(row.get(column), operator, value):
+                results.append(row)
+                if limit and len(results) >= limit:
+                    break
+        return results
 
     def delete_where(self, column, operator, value):
         """Removes rows matching the condition and saves data."""

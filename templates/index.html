@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+
+{% block title %}Add Record - MiniDB Admin{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+    <h1 class="h2">Add Record to Students</h1>
+</div>
+
+{% if msg %}
+<div class="alert alert-info alert-dismissible fade show" role="alert">
+    {{ msg }}
+    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+</div>
+{% endif %}
+
+<div class="card col-md-6">
+    <div class="card-body">
+        <form method="POST">
+            <div class="mb-3">
+                <label for="id" class="form-label">Student ID</label>
+                <input type="number" class="form-control" name="id" required>
+            </div>
+            <div class="mb-3">
+                <label for="name" class="form-label">Name</label>
+                <input type="text" class="form-control" name="name" required>
+            </div>
+            <div class="mb-3">
+                <label for="grade" class="form-label">Grade</label>
+                <input type="text" class="form-control" name="grade" required>
+            </div>
+            <button type="submit" class="btn btn-success">Add Student</button>
+        </form>
+    </div>
+</div>
+{% endblock %}

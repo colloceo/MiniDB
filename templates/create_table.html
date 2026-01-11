@@ -1,0 +1,501 @@
+{% extends "base.html" %}
+
+{% block title %}Table Designer - MiniDB Admin{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+    <h1 class="h2"><i class="bi bi-palette-fill me-2"></i> Table Designer</h1>
+    <div class="btn-toolbar mb-2 mb-md-0">
+        <button type="button" class="btn btn-sm btn-outline-secondary" onclick="showSQLPreview()">
+            <i class="bi bi-code-square me-1"></i> Preview SQL
+        </button>
+    </div>
+</div>
+
+<!-- Alert Container -->
+<div id="alertContainer"></div>
+
+<!-- Table Designer Card -->
+<div class="card border-0 shadow-sm mb-4">
+    <div class="card-header bg-primary text-white">
+        <h5 class="mb-0"><i class="bi bi-table me-2"></i> Design Your Table</h5>
+    </div>
+    <div class="card-body p-4">
+        <!-- Table Name -->
+        <div class="mb-4">
+            <label for="tableName" class="form-label fw-bold">
+                <i class="bi bi-tag-fill text-primary me-1"></i> Table Name
+            </label>
+            <input type="text" class="form-control form-control-lg" id="tableName"
+                placeholder="e.g., employees, products, orders" required>
+            <div class="form-text">Choose a descriptive name for your table (lowercase recommended)</div>
+        </div>
+
+        <!-- Columns Section -->
+        <div class="mb-4">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h5 class="mb-0">
+                    <i class="bi bi-list-columns-reverse text-success me-2"></i> Columns
+                </h5>
+                <button type="button" class="btn btn-success btn-sm" onclick="addColumn()">
+                    <i class="bi bi-plus-circle me-1"></i> Add Column
+                </button>
+            </div>
+
+            <div id="columnsContainer">
+                <!-- Columns will be added here dynamically -->
+            </div>
+        </div>
+
+        <!-- Foreign Keys Section -->
+        <div class="mb-4">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h5 class="mb-0">
+                    <i class="bi bi-diagram-3 text-warning me-2"></i> Foreign Keys (Relationships)
+                </h5>
+                <button type="button" class="btn btn-warning btn-sm" onclick="addForeignKey()">
+                    <i class="bi bi-link-45deg me-1"></i> Add Relationship
+                </button>
+            </div>
+
+            <div id="foreignKeysContainer">
+                <!-- Foreign keys will be added here dynamically -->
+                <div class="text-muted text-center py-3" id="noForeignKeys">
+                    <i class="bi bi-info-circle me-1"></i> No foreign keys defined yet
+                </div>
+            </div>
+        </div>
+
+        <!-- Action Buttons -->
+        <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+            <button type="button" class="btn btn-outline-secondary" onclick="resetForm()">
+                <i class="bi bi-arrow-counterclockwise me-1"></i> Reset
+            </button>
+            <button type="button" class="btn btn-primary btn-lg" onclick="createTable()">
+                <i class="bi bi-check-circle me-1"></i> Create Table
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- SQL Preview Modal -->
+<div class="modal fade" id="sqlPreviewModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header bg-dark text-white">
+                <h5 class="modal-title"><i class="bi bi-code-slash me-2"></i> Generated SQL</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <pre class="bg-dark text-light p-3 rounded"><code id="sqlPreviewCode"></code></pre>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                <button type="button" class="btn btn-primary" onclick="copySQL()">
+                    <i class="bi bi-clipboard me-1"></i> Copy SQL
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .column-row {
+        background: #f8f9fa;
+        border-left: 4px solid #0d6efd;
+        transition: all 0.3s ease;
+    }
+
+    .column-row:hover {
+        background: #e9ecef;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    }
+
+    .fk-row {
+        background: #fff3cd;
+        border-left: 4px solid #ffc107;
+        transition: all 0.3s ease;
+    }
+
+    .fk-row:hover {
+        background: #ffe69c;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    }
+
+    .btn-remove {
+        opacity: 0.6;
+        transition: opacity 0.2s;
+    }
+
+    .btn-remove:hover {
+        opacity: 1;
+    }
+
+    .form-check-input:checked {
+        background-color: #0d6efd;
+        border-color: #0d6efd;
+    }
+
+    pre code {
+        font-family: 'Courier New', monospace;
+        font-size: 14px;
+    }
+</style>
+
+<script>
+    let columnCount = 0;
+    let fkCount = 0;
+
+    // Initialize with one column
+    document.addEventListener('DOMContentLoaded', function () {
+        addColumn();
+    });
+
+    function addColumn() {
+        columnCount++;
+        const container = document.getElementById('columnsContainer');
+
+        const columnDiv = document.createElement('div');
+        columnDiv.className = 'column-row p-3 mb-2 rounded';
+        columnDiv.id = `column-${columnCount}`;
+
+        columnDiv.innerHTML = `
+        <div class="row g-2 align-items-center">
+            <div class="col-md-3">
+                <input type="text" class="form-control" placeholder="Column name" 
+                       id="colName-${columnCount}" required>
+            </div>
+            <div class="col-md-2">
+                <select class="form-select" id="colType-${columnCount}">
+                    <option value="int">INT</option>
+                    <option value="str" selected>STR</option>
+                    <option value="float">FLOAT</option>
+                </select>
+            </div>
+            <div class="col-md-5">
+                <div class="form-check form-check-inline">
+                    <input class="form-check-input" type="checkbox" id="colPrimary-${columnCount}" 
+                           onchange="handlePrimaryKeyChange(${columnCount})">
+                    <label class="form-check-label" for="colPrimary-${columnCount}">
+                        <i class="bi bi-key-fill text-primary"></i> Primary Key
+                    </label>
+                </div>
+                <div class="form-check form-check-inline">
+                    <input class="form-check-input" type="checkbox" id="colUnique-${columnCount}">
+                    <label class="form-check-label" for="colUnique-${columnCount}">
+                        <i class="bi bi-shield-check text-success"></i> Unique
+                    </label>
+                </div>
+            </div>
+            <div class="col-md-2 text-end">
+                <button type="button" class="btn btn-sm btn-outline-danger btn-remove" 
+                        onclick="removeColumn(${columnCount})">
+                    <i class="bi bi-trash"></i>
+                </button>
+            </div>
+        </div>
+    `;
+
+        container.appendChild(columnDiv);
+    }
+
+    function removeColumn(id) {
+        const element = document.getElementById(`column-${id}`);
+        if (element) {
+            element.remove();
+        }
+    }
+
+    function handlePrimaryKeyChange(id) {
+        const checkbox = document.getElementById(`colPrimary-${id}`);
+        if (checkbox.checked) {
+            // Uncheck all other primary key checkboxes
+            for (let i = 1; i <= columnCount; i++) {
+                if (i !== id) {
+                    const otherCheckbox = document.getElementById(`colPrimary-${i}`);
+                    if (otherCheckbox) {
+                        otherCheckbox.checked = false;
+                    }
+                }
+            }
+        }
+    }
+
+    function addForeignKey() {
+        fkCount++;
+        const container = document.getElementById('foreignKeysContainer');
+        const noFKMsg = document.getElementById('noForeignKeys');
+        if (noFKMsg) noFKMsg.style.display = 'none';
+
+        const fkDiv = document.createElement('div');
+        fkDiv.className = 'fk-row p-3 mb-2 rounded';
+        fkDiv.id = `fk-${fkCount}`;
+
+        // Get available tables
+        const tables = {{ tables | tojson
+    }};
+
+    fkDiv.innerHTML = `
+        <div class="row g-2 align-items-center">
+            <div class="col-md-3">
+                <label class="form-label small mb-1">Local Column</label>
+                <select class="form-select form-select-sm" id="fkLocal-${fkCount}">
+                    <option value="">Select column...</option>
+                </select>
+            </div>
+            <div class="col-md-1 text-center">
+                <i class="bi bi-arrow-right text-warning fs-4"></i>
+            </div>
+            <div class="col-md-3">
+                <label class="form-label small mb-1">References Table</label>
+                <select class="form-select form-select-sm" id="fkRefTable-${fkCount}" 
+                        onchange="updateRefColumns(${fkCount})">
+                    <option value="">Select table...</option>
+                    ${tables.map(t => `<option value="${t}">${t}</option>`).join('')}
+                </select>
+            </div>
+            <div class="col-md-3">
+                <label class="form-label small mb-1">References Column</label>
+                <select class="form-select form-select-sm" id="fkRefCol-${fkCount}">
+                    <option value="">Select column...</option>
+                </select>
+            </div>
+            <div class="col-md-2 text-end">
+                <button type="button" class="btn btn-sm btn-outline-danger btn-remove" 
+                        onclick="removeForeignKey(${fkCount})">
+                    <i class="bi bi-trash"></i>
+                </button>
+            </div>
+        </div>
+    `;
+
+    container.appendChild(fkDiv);
+    updateLocalColumns(fkCount);
+}
+
+    function removeForeignKey(id) {
+        const element = document.getElementById(`fk-${id}`);
+        if (element) {
+            element.remove();
+        }
+
+        // Check if any FKs remain
+        const container = document.getElementById('foreignKeysContainer');
+        if (container.children.length === 1) { // Only noForeignKeys div remains
+            document.getElementById('noForeignKeys').style.display = 'block';
+        }
+    }
+
+    function updateLocalColumns(fkId) {
+        const select = document.getElementById(`fkLocal-${fkId}`);
+        select.innerHTML = '<option value="">Select column...</option>';
+
+        // Get all defined columns
+        for (let i = 1; i <= columnCount; i++) {
+            const colName = document.getElementById(`colName-${i}`);
+            if (colName && colName.value) {
+                const option = document.createElement('option');
+                option.value = colName.value;
+                option.textContent = colName.value;
+                select.appendChild(option);
+            }
+        }
+    }
+
+    async function updateRefColumns(fkId) {
+        const tableSelect = document.getElementById(`fkRefTable-${fkId}`);
+        const colSelect = document.getElementById(`fkRefCol-${fkId}`);
+        const tableName = tableSelect.value;
+
+        colSelect.innerHTML = '<option value="">Loading...</option>';
+
+        if (!tableName) {
+            colSelect.innerHTML = '<option value="">Select column...</option>';
+            return;
+        }
+
+        try {
+            // Fetch table schema
+            const response = await fetch(`/api/table/${tableName}/columns`);
+            if (response.ok) {
+                const data = await response.json();
+                colSelect.innerHTML = '<option value="">Select column...</option>';
+                data.columns.forEach(col => {
+                    const option = document.createElement('option');
+                    option.value = col;
+                    option.textContent = col;
+                    colSelect.appendChild(option);
+                });
+            }
+        } catch (error) {
+            colSelect.innerHTML = '<option value="">Error loading columns</option>';
+        }
+    }
+
+    function buildSQL() {
+        const tableName = document.getElementById('tableName').value.trim();
+        if (!tableName) {
+            return null;
+        }
+
+        const columns = [];
+        const foreignKeys = [];
+
+        // Collect columns
+        for (let i = 1; i <= columnCount; i++) {
+            const nameInput = document.getElementById(`colName-${i}`);
+            if (!nameInput || !nameInput.value.trim()) continue;
+
+            const name = nameInput.value.trim();
+            const type = document.getElementById(`colType-${i}`).value;
+            const isPrimary = document.getElementById(`colPrimary-${i}`).checked;
+            const isUnique = document.getElementById(`colUnique-${i}`).checked;
+
+            let colDef = `${name} ${type.toUpperCase()}`;
+            if (isUnique && !isPrimary) {
+                colDef += ' UNIQUE';
+            }
+
+            columns.push(colDef);
+        }
+
+        // Collect foreign keys
+        for (let i = 1; i <= fkCount; i++) {
+            const localCol = document.getElementById(`fkLocal-${i}`);
+            const refTable = document.getElementById(`fkRefTable-${i}`);
+            const refCol = document.getElementById(`fkRefCol-${i}`);
+
+            if (localCol && refTable && refCol &&
+                localCol.value && refTable.value && refCol.value) {
+                foreignKeys.push(
+                    `FOREIGN KEY (${localCol.value}) REFERENCES ${refTable.value}(${refCol.value})`
+                );
+            }
+        }
+
+        const allParts = [...columns, ...foreignKeys];
+        return `CREATE TABLE ${tableName} (${allParts.join(', ')})`;
+    }
+
+    function showSQLPreview() {
+        const sql = buildSQL();
+        if (!sql) {
+            showAlert('Please enter a table name and at least one column', 'warning');
+            return;
+        }
+
+        document.getElementById('sqlPreviewCode').textContent = sql;
+        const modal = new bootstrap.Modal(document.getElementById('sqlPreviewModal'));
+        modal.show();
+    }
+
+    function copySQL() {
+        const sql = document.getElementById('sqlPreviewCode').textContent;
+        navigator.clipboard.writeText(sql).then(() => {
+            showAlert('SQL copied to clipboard!', 'success');
+        });
+    }
+
+    async function createTable() {
+        const tableName = document.getElementById('tableName').value.trim();
+
+        if (!tableName) {
+            showAlert('Please enter a table name', 'warning');
+            return;
+        }
+
+        // Collect columns data
+        const columns = [];
+        for (let i = 1; i <= columnCount; i++) {
+            const nameInput = document.getElementById(`colName-${i}`);
+            if (!nameInput || !nameInput.value.trim()) continue;
+
+            columns.push({
+                name: nameInput.value.trim(),
+                type: document.getElementById(`colType-${i}`).value,
+                is_primary: document.getElementById(`colPrimary-${i}`).checked,
+                is_unique: document.getElementById(`colUnique-${i}`).checked
+            });
+        }
+
+        if (columns.length === 0) {
+            showAlert('Please add at least one column', 'warning');
+            return;
+        }
+
+        // Collect foreign keys
+        const foreignKeys = [];
+        for (let i = 1; i <= fkCount; i++) {
+            const localCol = document.getElementById(`fkLocal-${i}`);
+            const refTable = document.getElementById(`fkRefTable-${i}`);
+            const refCol = document.getElementById(`fkRefCol-${i}`);
+
+            if (localCol && refTable && refCol &&
+                localCol.value && refTable.value && refCol.value) {
+                foreignKeys.push({
+                    local_column: localCol.value,
+                    ref_table: refTable.value,
+                    ref_column: refCol.value
+                });
+            }
+        }
+
+        // Send to server
+        try {
+            const response = await fetch('/create_table', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    table_name: tableName,
+                    columns: columns,
+                    foreign_keys: foreignKeys
+                })
+            });
+
+            const result = await response.json();
+
+            if (result.success) {
+                showAlert(`Table '${tableName}' created successfully!<br><small class="text-muted">SQL: ${result.sql}</small>`, 'success');
+                setTimeout(() => {
+                    window.location.href = `/table/${tableName}`;
+                }, 2000);
+            } else {
+                showAlert(`Error: ${result.error}<br><small class="text-muted">SQL: ${result.sql}</small>`, 'danger');
+            }
+        } catch (error) {
+            showAlert('Network error: ' + error.message, 'danger');
+        }
+    }
+
+    function showAlert(message, type) {
+        const container = document.getElementById('alertContainer');
+        const alert = document.createElement('div');
+        alert.className = `alert alert-${type} alert-dismissible fade show`;
+        alert.innerHTML = `
+        ${message}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    `;
+        container.appendChild(alert);
+
+        setTimeout(() => alert.remove(), 5000);
+    }
+
+    function resetForm() {
+        if (confirm('Are you sure you want to reset the form?')) {
+            location.reload();
+        }
+    }
+
+    // Update local column dropdowns when column names change
+    setInterval(() => {
+        for (let i = 1; i <= fkCount; i++) {
+            const fkElement = document.getElementById(`fk-${i}`);
+            if (fkElement) {
+                updateLocalColumns(i);
+            }
+        }
+    }, 1000);
+</script>
+{% endblock %}

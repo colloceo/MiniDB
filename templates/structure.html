@@ -1,0 +1,282 @@
+{% extends "base.html" %}
+
+{% block title %}{{ table_name }} - Structure - MiniDB Admin{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+    <h1 class="h2">
+        <i class="bi bi-diagram-3-fill me-2 text-primary"></i>
+        Table Structure: <span class="text-primary">{{ table_name }}</span>
+    </h1>
+    <div class="btn-toolbar mb-2 mb-md-0">
+        <div class="btn-group me-2">
+            <a href="/table/{{ table_name }}" class="btn btn-sm btn-outline-secondary">
+                <i class="bi bi-table me-1"></i> Browse Data
+            </a>
+            <a href="/sql-console" class="btn btn-sm btn-outline-primary">
+                <i class="bi bi-terminal me-1"></i> SQL Console
+            </a>
+        </div>
+    </div>
+</div>
+
+<!-- Alert Messages -->
+{% if msg %}
+<div class="alert {% if 'Error' in msg %}alert-danger{% else %}alert-success{% endif %} alert-dismissible fade show"
+    role="alert">
+    {{ msg }}
+    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+</div>
+{% endif %}
+
+<!-- Table Structure Card -->
+<div class="card border-0 shadow-sm mb-4">
+    <div class="card-header bg-gradient text-white"
+        style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
+        <h5 class="mb-0">
+            <i class="bi bi-list-columns-reverse me-2"></i> Column Definitions
+        </h5>
+    </div>
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-hover mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th style="width: 5%;">#</th>
+                        <th style="width: 30%;">
+                            <i class="bi bi-tag-fill text-primary me-1"></i> Column Name
+                        </th>
+                        <th style="width: 20%;">
+                            <i class="bi bi-code-square text-success me-1"></i> Data Type
+                        </th>
+                        <th style="width: 15%;">
+                            <i class="bi bi-key-fill text-warning me-1"></i> Key
+                        </th>
+                        <th style="width: 30%;">
+                            <i class="bi bi-info-circle text-info me-1"></i> Details
+                        </th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for col in columns %}
+                    <tr>
+                        <td class="text-muted">{{ loop.index }}</td>
+                        <td>
+                            <strong class="text-dark">{{ col.name }}</strong>
+                        </td>
+                        <td>
+                            <span class="badge bg-secondary">{{ col.type }}</span>
+                        </td>
+                        <td>
+                            {% if col.key == 'PRI' %}
+                            <span class="badge bg-warning text-dark">
+                                <i class="bi bi-key-fill me-1"></i> PRIMARY
+                            </span>
+                            {% elif col.key == 'UNI' %}
+                            <span class="badge bg-success">
+                                <i class="bi bi-shield-check me-1"></i> UNIQUE
+                            </span>
+                            {% elif col.key == 'MUL' %}
+                            <span class="badge bg-info">
+                                <i class="bi bi-link-45deg me-1"></i> FOREIGN
+                            </span>
+                            {% else %}
+                            <span class="text-muted">—</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if col.is_fk %}
+                            <small class="text-muted">
+                                <i class="bi bi-arrow-right me-1"></i>
+                                References: <code>{{ col.fk_ref }}</code>
+                            </small>
+                            {% else %}
+                            <span class="text-muted">—</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    <div class="card-footer bg-light">
+        <small class="text-muted">
+            <i class="bi bi-info-circle me-1"></i>
+            Total Columns: <strong>{{ columns|length }}</strong>
+        </small>
+    </div>
+</div>
+
+<!-- Add Column Card -->
+<div class="card border-0 shadow-sm">
+    <div class="card-header bg-success text-white">
+        <h5 class="mb-0">
+            <i class="bi bi-plus-circle me-2"></i> Add New Column
+        </h5>
+    </div>
+    <div class="card-body">
+        <form method="POST" id="addColumnForm">
+            <div class="row g-3 align-items-end">
+                <div class="col-md-5">
+                    <label for="column_name" class="form-label fw-bold">
+                        <i class="bi bi-tag text-primary me-1"></i> Column Name
+                    </label>
+                    <input type="text" class="form-control form-control-lg" id="column_name" name="column_name"
+                        placeholder="e.g., email, age, status" required>
+                    <div class="form-text">Choose a descriptive name for the new column</div>
+                </div>
+
+                <div class="col-md-4">
+                    <label for="column_type" class="form-label fw-bold">
+                        <i class="bi bi-code-square text-success me-1"></i> Data Type
+                    </label>
+                    <select class="form-select form-select-lg" id="column_type" name="column_type" required>
+                        <option value="int">INT - Integer numbers</option>
+                        <option value="str" selected>STR - Text/strings</option>
+                        <option value="float">FLOAT - Decimal numbers</option>
+                    </select>
+                </div>
+
+                <div class="col-md-3">
+                    <button type="submit" class="btn btn-success btn-lg w-100">
+                        <i class="bi bi-plus-circle me-1"></i> Add Column
+                    </button>
+                </div>
+            </div>
+        </form>
+
+        <div class="alert alert-info mt-4 mb-0" role="alert">
+            <div class="d-flex">
+                <div class="flex-shrink-0">
+                    <i class="bi bi-lightbulb-fill fs-4"></i>
+                </div>
+                <div class="flex-grow-1 ms-3">
+                    <h6 class="alert-heading">Default Values</h6>
+                    <p class="mb-0">
+                        When you add a new column, all existing rows will be updated with default values:
+                    </p>
+                    <ul class="mb-0 mt-2">
+                        <li><strong>INT</strong> → <code>0</code></li>
+                        <li><strong>STR</strong> → <code>''</code> (empty string)</li>
+                        <li><strong>FLOAT</strong> → <code>0.0</code></li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- SQL Preview Section -->
+<div class="card border-0 shadow-sm mt-4 bg-dark text-white">
+    <div class="card-header bg-dark border-bottom border-secondary">
+        <h6 class="mb-0">
+            <i class="bi bi-code-slash me-2"></i> Generated SQL Preview
+        </h6>
+    </div>
+    <div class="card-body">
+        <pre
+            class="mb-0"><code id="sqlPreview" class="text-light">-- Enter column details above to see the SQL command</code></pre>
+    </div>
+</div>
+
+<style>
+    .bg-gradient {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    }
+
+    .table-hover tbody tr:hover {
+        background-color: rgba(13, 110, 253, 0.05);
+        transition: background-color 0.2s ease;
+    }
+
+    .card {
+        transition: transform 0.2s ease, box-shadow 0.2s ease;
+    }
+
+    .card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 8px 16px rgba(0, 0, 0, 0.1) !important;
+    }
+
+    code {
+        background-color: rgba(0, 0, 0, 0.05);
+        padding: 2px 6px;
+        border-radius: 3px;
+        font-family: 'Courier New', monospace;
+    }
+
+    .badge {
+        font-weight: 600;
+        padding: 0.35em 0.65em;
+    }
+
+    pre {
+        background-color: #1e1e1e;
+        padding: 1rem;
+        border-radius: 0.375rem;
+        font-family: 'Courier New', monospace;
+        font-size: 14px;
+    }
+
+    .alert-info {
+        background-color: #cfe2ff;
+        border-color: #b6d4fe;
+        color: #084298;
+    }
+
+    .form-control:focus,
+    .form-select:focus {
+        border-color: #86b7fe;
+        box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.25);
+    }
+</style>
+
+<script>
+    // Real-time SQL preview
+    document.getElementById('column_name').addEventListener('input', updateSQLPreview);
+    document.getElementById('column_type').addEventListener('change', updateSQLPreview);
+
+    function updateSQLPreview() {
+        const colName = document.getElementById('column_name').value.trim();
+        const colType = document.getElementById('column_type').value.toUpperCase();
+        const tableName = "{{ table_name }}";
+
+        const preview = document.getElementById('sqlPreview');
+
+        if (colName) {
+            preview.textContent = `ALTER TABLE ${tableName} ADD ${colName} ${colType}`;
+        } else {
+            preview.textContent = '-- Enter column details above to see the SQL command';
+        }
+    }
+
+    // Form validation
+    document.getElementById('addColumnForm').addEventListener('submit', function (e) {
+        const colName = document.getElementById('column_name').value.trim();
+
+        if (!colName) {
+            e.preventDefault();
+            alert('Please enter a column name');
+            return false;
+        }
+
+        // Confirm action
+        const colType = document.getElementById('column_type').value.toUpperCase();
+        const confirmed = confirm(
+            `Are you sure you want to add column '${colName}' (${colType}) to table '{{ table_name }}'?\n\n` +
+            `This will update all existing rows with default values.`
+        );
+
+        if (!confirmed) {
+            e.preventDefault();
+            return false;
+        }
+    });
+
+    // Auto-focus on column name input
+    document.addEventListener('DOMContentLoaded', function () {
+        document.getElementById('column_name').focus();
+    });
+</script>
+{% endblock %}

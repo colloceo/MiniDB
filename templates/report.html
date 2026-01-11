@@ -1,0 +1,75 @@
+{% extends "base.html" %}
+
+{% block title %}Relational Report - MiniDB Admin{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+    <h1 class="h2"><i class="bi bi-graph-up-arrow me-2"></i> Relational Report</h1>
+    <span class="badge bg-success py-2 px-3 fw-bold shadow-sm">
+        <i class="bi bi-lightning-charge-fill me-1"></i> Live JOIN Analysis
+    </span>
+</div>
+
+<div class="card border-0 shadow-sm mb-4 bg-primary text-white overflow-hidden">
+    <div class="card-body py-4 position-relative" style="z-index: 1;">
+        <h4 class="fw-bold mb-1">Student Course Enrollment</h4>
+        <p class="mb-0 opacity-75">This report demonstrates MiniDB's <strong>Hash Join</strong> capability, combining
+            <code>students</code> and <code>courses</code> in $O(N+M)$ time.
+        </p>
+        <i class="bi bi-diagram-3 position-absolute end-0 top-50 translate-middle-y me-4 opacity-25"
+            style="font-size: 5rem;"></i>
+    </div>
+</div>
+
+{% if results is string %}
+<div class="alert alert-danger border-0 shadow-sm d-flex align-items-center mb-4" role="alert">
+    <i class="bi bi-exclamation-octagon-fill fs-4 me-3"></i>
+    <div>
+        <strong class="d-block">Join Execution Failed</strong>
+        {{ results }}
+    </div>
+</div>
+{% else %}
+<div class="card border-0 shadow-sm">
+    <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0">
+            <thead class="table-light">
+                <tr class="text-uppercase small fw-bold text-muted">
+                    <th class="py-3 px-4">Student ID</th>
+                    <th class="py-3 px-4">Student Name</th>
+                    <th class="py-3 px-4">Course ID</th>
+                    <th class="py-3 px-4">Course Title</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for row in results %}
+                <tr>
+                    <td class="px-4 py-3 fw-bold">{{ row.get('id', row.get('students_id', 'N/A')) }}</td>
+                    <td class="px-4 py-3 text-primary fw-medium">{{ row.get('name', 'N/A') }}</td>
+                    <td class="px-4 py-3 text-muted">{{ row.get('course_id', 'N/A') }}</td>
+                    <td class="px-4 py-3">
+                        <span class="badge bg-soft-info text-info border border-info-subtle">
+                            {{ row.get('title', 'N/A') }}
+                        </span>
+                    </td>
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="4" class="text-center py-5 text-muted">
+                        <i class="bi bi-inbox fs-1 d-block mb-3"></i>
+                        No enrollment data found.
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endif %}
+
+<style>
+    .bg-soft-info {
+        background-color: rgba(13, 202, 240, 0.1);
+    }
+</style>
+{% endblock %}

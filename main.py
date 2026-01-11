@@ -53,14 +53,14 @@ def print_dict_as_table(data):
     """Converts a dictionary (like DESCRIBE results) into a readable table."""
     # Special handling for DESCRIBE results which have specific structure
     if 'columns' in data and 'column_types' in data:
-        print(f"\nSchema Information:")
+        print(f"\nSchema Information for Table:")
         rows = []
         for col in data['columns']:
             rows.append({
                 'Column': col,
                 'Type': data['column_types'].get(col, 'UNKNOWN'),
                 'Key': 'PRI' if col == data.get('primary_key') else 'UNI' if col in data.get('unique_columns', []) else 'MUL' if col in data.get('foreign_keys', {}) else '',
-                'Details': f"Ref: {data['foreign_keys'][col]}" if col in data.get('foreign_keys', {}) else ''
+                'Details': f"Ref: {data['foreign_keys'][col]}" if col in data.get('foreign_keys', {}) else '—'
             })
         print_table(rows)
     else:
@@ -74,7 +74,8 @@ def _print_divider(header_line):
 def main():
     db = MiniDB()
     print("Welcome to MiniDB CLI.")
-    print("Enter SQL commands. Separate multiple statements with ';'.")
+    print("Enter SQL commands. Use ';' to separate or terminate statements.")
+    print("Tip: If you forget the ';', just press Enter on an empty line to execute.")
     print("Type 'exit' or 'quit' to logout.")
     
     buffer = ""
@@ -83,40 +84,49 @@ def main():
             prompt = "minidb> " if not buffer else "      -> "
             line = input(prompt)
             
-            if not line and not buffer:
-                continue
-                
-            if line.strip().lower() in ('exit', 'quit', '.exit'):
-                if buffer:
-                    buffer = ""
-                    print("Buffer cleared.")
-                    continue
+            # Exit check (immediate)
+            if not buffer and line.strip().lower() in ('exit', 'quit', '.exit'):
                 print("Goodbye!")
                 break
-            
-            buffer += " " + line
-            
-            # Simple check for semicolon to support multi-line statements
-            if not buffer.strip().endswith(';'):
+
+            # Handle empty line as execution trigger for existing buffer
+            if not line.strip() and buffer.strip():
+                # User pressed Enter on empty line - execute what we have
+                pass
+            elif not line.strip() and not buffer.strip():
                 continue
+            else:
+                buffer += " " + line
+                # If it doesn't end in a semicolon, keep buffering
+                if not buffer.strip().endswith(';'):
+                    continue
                 
             # Split and execute statements
-            statements = [s.strip() for s in buffer.split(';') if s.strip()]
-            buffer = ""
+            # We treat the buffer as a single block if no semicolon, 
+            # or multiple blocks if semicolons exist.
+            raw_buffer = buffer.strip()
+            if not raw_buffer:
+                continue
+                
+            statements = [s.strip() for s in raw_buffer.split(';') if s.strip()]
+            if not statements and raw_buffer:
+                statements = [raw_buffer] # Fallback for no semicolon execution
+                
+            buffer = "" # Reset buffer
             
             for stmt in statements:
                 if len(statements) > 1:
                     print(f"\nExecuting: {stmt}")
                 
                 try:
-                    result = db.execute_query(stmt)
+                    results = db.execute_query(stmt)
                     
-                    if isinstance(result, list):
-                        print_table(result)
-                    elif isinstance(result, dict):
-                        print_dict_as_table(result)
+                    if isinstance(results, list):
+                        print_table(results)
+                    elif isinstance(results, dict):
+                        print_dict_as_table(results)
                     else:
-                        print(result)
+                        print(results)
                 except Exception as stmt_error:
                     print(f"Statement Error: {stmt_error}")
                 

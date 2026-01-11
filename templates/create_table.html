@@ -24,6 +24,8 @@
         <div class="mb-4 pb-3 border-bottom">
             <h3 class="fw-bold text-dark mb-1">Create New Table</h3>
             <p class="text-muted small">Define your schema, column types, and relational constraints.</p>
+            <!-- Store tables for JS access in a safe way -->
+            <div id="metadata-store" data-tables='{{ tables | tojson }}' style="display: none;"></div>
         </div>
 
         <!-- Table Name -->
@@ -289,11 +291,11 @@
         fkDiv.className = 'fk-row p-3 mb-2 rounded-3 shadow-sm';
         fkDiv.id = `fk-${fkCount}`;
 
-        // Get available tables
-        const availableTables = {{ tables | tojson
-    }};
+        // Get available tables from the data attribute
+        const metadataStore = document.getElementById('metadata-store');
+        const availableTables = JSON.parse(metadataStore.dataset.tables || '[]');
 
-    fkDiv.innerHTML = `
+        fkDiv.innerHTML = `
             <div class="row g-2 align-items-center">
                 <div class="col-md-3">
                     <label class="form-label small mb-1 fw-bold text-muted">Local Column</label>
@@ -309,7 +311,7 @@
                     <select class="form-select form-select-sm" id="fkRefTable-${fkCount}" 
                             onchange="updateRefColumns(${fkCount})">
                         <option value="">Select table...</option>
-                        ${availableTables.map(t => `<option value="${t}">${t}</option>`).join('')}
+                        ${availableTables.map(t => '<option value="' + t + '">' + t + '</option>').join('')}
                     </select>
                 </div>
                 <div class="col-md-3">
@@ -327,8 +329,8 @@
             </div>
         `;
 
-    container.appendChild(fkDiv);
-    updateLocalColumns(fkCount);
+        container.appendChild(fkDiv);
+        updateLocalColumns(fkCount);
     }
 
     function removeForeignKey(id) {
@@ -345,7 +347,7 @@
     }
 
     function updateLocalColumns(fkId) {
-        const select = document.getElementById(`fkLocal-${fkId}`);
+        const select = document.getElementById('fkLocal-' + fkId);
         if (!select) return;
 
         const currentValue = select.value;
@@ -353,7 +355,7 @@
 
         // Get all defined columns
         for (let i = 1; i <= columnCount; i++) {
-            const colName = document.getElementById(`colName-${i}`);
+            const colName = document.getElementById('colName-' + i);
             if (colName && colName.value) {
                 const option = document.createElement('option');
                 option.value = colName.value;
@@ -365,8 +367,8 @@
     }
 
     async function updateRefColumns(fkId) {
-        const tableSelect = document.getElementById(`fkRefTable-${fkId}`);
-        const colSelect = document.getElementById(`fkRefCol-${fkId}`);
+        const tableSelect = document.getElementById('fkRefTable-' + fkId);
+        const colSelect = document.getElementById('fkRefCol-' + fkId);
         const tableName = tableSelect.value;
 
         colSelect.innerHTML = '<option value="">Loading...</option>';
@@ -378,7 +380,7 @@
 
         try {
             // Fetch table schema
-            const response = await fetch(`/api/table/${tableName}/columns`);
+            const response = await fetch('/api/table/' + tableName + '/columns');
             if (response.ok) {
                 const data = await response.json();
                 colSelect.innerHTML = '<option value="">Select column...</option>';
@@ -405,15 +407,15 @@
 
         // Collect columns
         for (let i = 1; i <= columnCount; i++) {
-            const nameInput = document.getElementById(`colName-${i}`);
+            const nameInput = document.getElementById('colName-' + i);
             if (!nameInput || !nameInput.value.trim()) continue;
 
             const name = nameInput.value.trim();
-            const type = document.getElementById(`colType-${i}`).value;
-            const isPrimary = document.getElementById(`colPrimary-${i}`).checked;
-            const isUnique = document.getElementById(`colUnique-${i}`).checked;
+            const type = document.getElementById('colType-' + i).value;
+            const isPrimary = document.getElementById('colPrimary-' + i).checked;
+            const isUnique = document.getElementById('colUnique-' + i).checked;
 
-            let colDef = `${name} ${type.toUpperCase()}`;
+            let colDef = name + ' ' + type.toUpperCase();
             if (isPrimary) {
                 colDef += ' PRIMARY KEY';
             } else if (isUnique) {
@@ -425,20 +427,20 @@
 
         // Collect foreign keys
         for (let i = 1; i <= fkCount; i++) {
-            const localCol = document.getElementById(`fkLocal-${i}`);
-            const refTable = document.getElementById(`fkRefTable-${i}`);
-            const refCol = document.getElementById(`fkRefCol-${i}`);
+            const localCol = document.getElementById('fkLocal-' + i);
+            const refTable = document.getElementById('fkRefTable-' + i);
+            const refCol = document.getElementById('fkRefCol-' + i);
 
             if (localCol && refTable && refCol &&
                 localCol.value && refTable.value && refCol.value) {
                 foreignKeys.push(
-                    `FOREIGN KEY (${localCol.value}) REFERENCES ${refTable.value}(${refCol.value})`
+                    'FOREIGN KEY (' + localCol.value + ') REFERENCES ' + refTable.value + '(' + refCol.value + ')'
                 );
             }
         }
 
-        const allParts = [...columns, ...foreignKeys];
-        return `CREATE TABLE ${tableName} (${allParts.join(', ')})`;
+        const allParts = columns.concat(foreignKeys);
+        return 'CREATE TABLE ' + tableName + ' (' + allParts.join(', ') + ')';
     }
 
     function showSQLPreview() {
@@ -455,7 +457,7 @@
 
     function copySQL() {
         const sql = document.getElementById('sqlPreviewCode').textContent;
-        navigator.clipboard.writeText(sql).then(() => {
+        navigator.clipboard.writeText(sql).then(function () {
             showAlert('SQL copied to clipboard!', 'success');
         });
     }
@@ -471,14 +473,14 @@
         // Collect columns data
         const columns = [];
         for (let i = 1; i <= columnCount; i++) {
-            const nameInput = document.getElementById(`colName-${i}`);
+            const nameInput = document.getElementById('colName-' + i);
             if (!nameInput || !nameInput.value.trim()) continue;
 
             columns.push({
                 name: nameInput.value.trim(),
-                type: document.getElementById(`colType-${i}`).value,
-                is_primary: document.getElementById(`colPrimary-${i}`).checked,
-                is_unique: document.getElementById(`colUnique-${i}`).checked
+                type: document.getElementById('colType-' + i).value,
+                is_primary: document.getElementById('colPrimary-' + i).checked,
+                is_unique: document.getElementById('colUnique-' + i).checked
             });
         }
 
@@ -490,9 +492,9 @@
         // Collect foreign keys
         const foreignKeys = [];
         for (let i = 1; i <= fkCount; i++) {
-            const localCol = document.getElementById(`fkLocal-${i}`);
-            const refTable = document.getElementById(`fkRefTable-${i}`);
-            const refCol = document.getElementById(`fkRefCol-${i}`);
+            const localCol = document.getElementById('fkLocal-' + i);
+            const refTable = document.getElementById('fkRefTable-' + i);
+            const refCol = document.getElementById('fkRefCol-' + i);
 
             if (localCol && refTable && refCol &&
                 localCol.value && refTable.value && refCol.value) {
@@ -521,12 +523,12 @@
             const result = await response.json();
 
             if (result.success) {
-                showAlert(`Table '${tableName}' created successfully!`, 'success');
-                setTimeout(() => {
-                    window.location.href = `/table/${tableName}`;
+                showAlert("Table '" + tableName + "' created successfully!", 'success');
+                setTimeout(function () {
+                    window.location.href = '/table/' + tableName;
                 }, 1500);
             } else {
-                showAlert(`Error: ${result.error}`, 'danger');
+                showAlert('Error: ' + result.error, 'danger');
             }
         } catch (error) {
             showAlert('Network error: ' + error.message, 'danger');
@@ -536,14 +538,11 @@
     function showAlert(message, type) {
         const container = document.getElementById('alertContainer');
         const alert = document.createElement('div');
-        alert.className = `alert alert-${type} alert-dismissible fade show border-0 shadow-sm`;
-        alert.innerHTML = `
-        ${message}
-        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-    `;
+        alert.className = 'alert alert-' + type + ' alert-dismissible fade show border-0 shadow-sm';
+        alert.innerHTML = message + '<button type="button" class="btn-close" data-bs-dismiss="alert"></button>';
         container.appendChild(alert);
 
-        setTimeout(() => alert.remove(), 5000);
+        setTimeout(function () { alert.remove(); }, 5000);
     }
 
     function resetForm() {
@@ -553,9 +552,9 @@
     }
 
     // Update local column dropdowns when column names change
-    setInterval(() => {
+    setInterval(function () {
         for (let i = 1; i <= fkCount; i++) {
-            const fkElement = document.getElementById(`fk-${i}`);
+            const fkElement = document.getElementById('fk-' + i);
             if (fkElement) {
                 updateLocalColumns(i);
             }

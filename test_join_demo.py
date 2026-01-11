@@ -20,7 +20,7 @@ print("=" * 60)
 print("\n1. Creating tables...")
 db.execute_query("CREATE TABLE students (id int, name str, course_id int)")
 db.execute_query("CREATE TABLE courses (id int, title str)")
-print("   ✓ Tables created: students, courses")
+print("   [v] Tables created: students, courses")
 
 # Insert seed data
 print("\n2. Inserting seed data...")
@@ -28,7 +28,7 @@ db.execute_query("INSERT INTO courses VALUES (1, 'Computer Science')")
 db.execute_query("INSERT INTO courses VALUES (2, 'Electrical Eng')")
 db.execute_query("INSERT INTO students VALUES (101, 'Collins', 1)")
 db.execute_query("INSERT INTO students VALUES (102, 'John', 2)")
-print("   ✓ Inserted 2 courses and 2 students")
+print("   [v] Inserted 2 courses and 2 students")
 
 # Display individual tables
 print("\n3. Viewing individual tables:")
@@ -50,9 +50,9 @@ print()
 results = db.execute_query("SELECT * FROM students JOIN courses ON students.course_id = courses.id")
 
 if isinstance(results, str):
-    print(f"   ✗ Error: {results}")
+    print(f"   [x] Error: {results}")
 else:
-    print(f"   ✓ JOIN successful! Found {len(results)} matching rows\n")
+    print(f"   [v] JOIN successful! Found {len(results)} matching rows\n")
     print("   JOINED RESULTS:")
     print("   " + "-" * 56)
     print(f"   {'Student Name':<20} | {'Course Title':<30}")
@@ -64,9 +64,9 @@ else:
     print("   " + "-" * 56)
 
 print("\n5. Algorithm Analysis:")
-print("   ✓ Parser: Regex-based SQL parsing with JOIN support")
-print("   ✓ Algorithm: Hash Join (O(N+M) complexity)")
-print("   ✓ Optimization: Smaller table used for hash map build phase")
+print("   [v] Parser: Regex-based SQL parsing with JOIN support")
+print("   [v] Algorithm: Hash Join (O(N+M) complexity)")
+print("   [v] Optimization: Smaller table used for hash map build phase")
 
 print("\n" + "=" * 60)
 print("Demo Complete!")

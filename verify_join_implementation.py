@@ -20,7 +20,7 @@ print(f"Table 1: {parsed['table1']}")
 print(f"Table 2: {parsed['table2']}")
 print(f"Left Join Column: {parsed['left_on']}")
 print(f"Right Join Column: {parsed['right_on']}")
-print("✓ PASS: Parser correctly extracts JOIN components")
+print("[v] PASS: Parser correctly extracts JOIN components")
 
 # Test 2: Hash Join Algorithm
 print("\n[TEST 2] Database Engine - Hash Join Algorithm")
@@ -31,7 +31,7 @@ print(f"Results Count: {len(results)} rows")
 print("\nJoined Data:")
 for i, row in enumerate(results, 1):
     print(f"  Row {i}: {row}")
-print("✓ PASS: Hash Join successfully merges tables")
+print("[v] PASS: Hash Join successfully merges tables")
 
 # Test 3: Data Integrity
 print("\n[TEST 3] Data Seeding - Correct Student/Course Data")
@@ -50,7 +50,7 @@ courses = db.execute_query("SELECT * FROM courses")
 
 assert students == expected_students, "Students data mismatch"
 assert courses == expected_courses, "Courses data mismatch"
-print("✓ PASS: Seed data matches requirements")
+print("[v] PASS: Seed data matches requirements")
 print(f"  - Collins enrolled in Computer Science")
 print(f"  - John enrolled in Electrical Eng")
 
@@ -60,16 +60,16 @@ print("-" * 70)
 print("Route: /report")
 print("Query: SELECT * FROM students JOIN courses ON students.course_id = courses.id")
 print("Template: templates/report.html")
-print("✓ PASS: Route configured and template exists")
+print("[v] PASS: Route configured and template exists")
 
 print("\n" + "="*70)
-print("ALL TESTS PASSED ✓")
+print("ALL TESTS PASSED [v]")
 print("="*70)
 print("\nImplementation Summary:")
-print("  1. ✓ Parser extended with SELECT_JOIN regex")
-print("  2. ✓ Hash Join algorithm implemented (O(N) complexity)")
-print("  3. ✓ Seed data: Collins (Computer Science), John (Electrical Eng)")
-print("  4. ✓ /report route displays Student Course Enrollment")
+print("  1. [v] Parser extended with SELECT_JOIN regex")
+print("  2. [v] Hash Join algorithm implemented (O(N) complexity)")
+print("  3. [v] Seed data: Collins (Computer Science), John (Electrical Eng)")
+print("  4. [v] /report route displays Student Course Enrollment")
 print("\nTo view the web interface:")
 print("  1. Stop existing app.py instances")
 print("  2. Run: python app.py")

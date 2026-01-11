@@ -22,7 +22,7 @@ print("-"*70)
 query1 = "CREATE TABLE courses (id INT, title STR)"
 result1 = db.execute_query(query1)
 print(f"SQL: {query1}")
-print(f"✓ {result1}")
+print(f"[v] {result1}")
 
 # Step 2: Create child table with foreign key
 print("\n📋 Step 2: Creating child table with FOREIGN KEY constraint")
@@ -35,7 +35,7 @@ query2 = """CREATE TABLE students (
 )""".replace('\n', ' ')
 result2 = db.execute_query(query2)
 print(f"SQL: {query2}")
-print(f"✓ {result2}")
+print(f"[v] {result2}")
 
 # Step 3: Inspect schema
 print("\n📋 Step 3: Inspecting table schema")
@@ -54,7 +54,7 @@ db.execute_query("INSERT INTO courses VALUES (1, 'Computer Science')")
 db.execute_query("INSERT INTO courses VALUES (2, 'Electrical Engineering')")
 db.execute_query("INSERT INTO students VALUES (101, 'Collins', 1)")
 db.execute_query("INSERT INTO students VALUES (102, 'John', 2)")
-print("✓ Inserted 2 courses and 2 students")
+print("[v] Inserted 2 courses and 2 students")
 
 # Step 5: Query with JOIN
 print("\n📋 Step 5: Querying with JOIN (using foreign key relationship)")
@@ -74,7 +74,7 @@ db2 = MiniDB()  # Reload database
 desc2 = db2.execute_query("DESCRIBE students")
 print("After database reload:")
 print(f"  • Foreign Keys: {desc2['foreign_keys']}")
-print("✓ Foreign key constraint persisted!")
+print("[v] Foreign key constraint persisted!")
 
 # Step 7: Multiple foreign keys example
 print("\n📋 Step 7: Creating table with multiple foreign keys")
@@ -88,19 +88,19 @@ query3 = """CREATE TABLE enrollments (
 )""".replace('\n', ' ')
 result3 = db.execute_query(query3)
 print(f"SQL: {query3}")
-print(f"✓ {result3}")
+print(f"[v] {result3}")
 
 desc3 = db.execute_query("DESCRIBE enrollments")
 print(f"\nForeign Keys: {desc3['foreign_keys']}")
 
 print("\n" + "="*70)
-print("✅ FOREIGN KEY FEATURE DEMONSTRATION COMPLETE")
+print("[PASS] FOREIGN KEY FEATURE DEMONSTRATION COMPLETE")
 print("="*70)
 print("\nKey Features Demonstrated:")
-print("  ✓ FOREIGN KEY syntax parsing")
-print("  ✓ Metadata storage in table.foreign_keys")
-print("  ✓ Persistence across database restarts")
-print("  ✓ DESCRIBE command shows foreign keys")
-print("  ✓ Multiple foreign keys per table")
-print("  ✓ Integration with JOIN queries")
+print("  [v] FOREIGN KEY syntax parsing")
+print("  [v] Metadata storage in table.foreign_keys")
+print("  [v] Persistence across database restarts")
+print("  [v] DESCRIBE command shows foreign keys")
+print("  [v] Multiple foreign keys per table")
+print("  [v] Integration with JOIN queries")
 print("\n" + "="*70 + "\n")

@@ -53,9 +53,9 @@ for row in data:
 
 # Check default value
 if all(row.get('email') == '' for row in data):
-    print("✓ PASS: Default value (empty string) added to all rows")
+    print("[v] PASS: Default value (empty string) added to all rows")
 else:
-    print("✗ FAIL: Default value not correctly applied")
+    print("[x] FAIL: Default value not correctly applied")
 
 # Test 3: Add INT column
 print("\n[TEST 3] Adding new column 'age' (INT)")
@@ -71,9 +71,9 @@ for row in data2:
 
 # Check default value for INT
 if all(row.get('age') == 0 for row in data2):
-    print("✓ PASS: Default value (0) added to all rows")
+    print("[v] PASS: Default value (0) added to all rows")
 else:
-    print("✗ FAIL: Default value not correctly applied")
+    print("[x] FAIL: Default value not correctly applied")
 
 # Test 4: Verify metadata persistence
 print("\n[TEST 4] Testing metadata persistence")
@@ -87,9 +87,9 @@ print(f"After reload - Column Types: {desc2['column_types']}")
 
 expected_columns = ['id', 'name', 'email', 'age']
 if desc2['columns'] == expected_columns:
-    print("✓ PASS: Schema persisted correctly")
+    print("[v] PASS: Schema persisted correctly")
 else:
-    print(f"✗ FAIL: Expected {expected_columns}, got {desc2['columns']}")
+    print(f"[x] FAIL: Expected {expected_columns}, got {desc2['columns']}")
 
 # Test 5: Insert data with new columns
 print("\n[TEST 5] Inserting data with new columns")
@@ -112,9 +112,9 @@ data4 = db.execute_query("SELECT * FROM users WHERE id = 1")
 print(f"Updated row: {data4[0]}")
 
 if data4[0]['email'] == 'alice@example.com' and data4[0]['age'] == 30:
-    print("✓ PASS: New columns can be updated")
+    print("[v] PASS: New columns can be updated")
 else:
-    print("✗ FAIL: Update failed")
+    print("[x] FAIL: Update failed")
 
 # Test 7: Try to add duplicate column (should fail)
 print("\n[TEST 7] Attempting to add duplicate column (should fail)")
@@ -124,9 +124,9 @@ result_dup = db.execute_query("ALTER TABLE users ADD name STR")
 print(f"Result: {result_dup}")
 
 if "Error" in result_dup or "already exists" in result_dup:
-    print("✓ PASS: Duplicate column rejected")
+    print("[v] PASS: Duplicate column rejected")
 else:
-    print("✗ FAIL: Duplicate column should have been rejected")
+    print("[x] FAIL: Duplicate column should have been rejected")
 
 # Test 8: Verify data file structure
 print("\n[TEST 8] Verifying data file structure")
@@ -141,9 +141,9 @@ print(f"First row keys: {list(file_data[0].keys())}")
 
 expected_keys = {'id', 'name', 'email', 'age'}
 if set(file_data[0].keys()) == expected_keys:
-    print("✓ PASS: Data file structure correct")
+    print("[v] PASS: Data file structure correct")
 else:
-    print(f"✗ FAIL: Expected keys {expected_keys}, got {set(file_data[0].keys())}")
+    print(f"[x] FAIL: Expected keys {expected_keys}, got {set(file_data[0].keys())}")
 
 print("\n" + "=" * 70)
 print("ALTER TABLE TESTS COMPLETE")

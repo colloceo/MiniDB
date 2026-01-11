@@ -31,7 +31,7 @@ db.execute_query("""
 desc = db.execute_query("DESCRIBE employees")
 print(f"Foreign Keys: {desc['foreign_keys']}")
 assert desc['foreign_keys'] == {'dept_id': 'departments.id'}, "Foreign key not stored!"
-print("✓ PASS: Foreign key correctly stored")
+print("[v] PASS: Foreign key correctly stored")
 
 # Test 2: ALTER TABLE
 print("\n[TEST 2] ALTER TABLE ADD COLUMN")
@@ -50,13 +50,13 @@ data = db.execute_query("SELECT * FROM employees")
 print(f"Data after ALTER: {data}")
 assert all('email' in row for row in data), "Column not in all rows!"
 assert all(row['email'] == '' for row in data), "Default value incorrect!"
-print("✓ PASS: Column added with default values")
+print("[v] PASS: Column added with default values")
 
 # Add salary column
 db.execute_query("ALTER TABLE employees ADD salary INT")
 data2 = db.execute_query("SELECT * FROM employees")
 assert all(row['salary'] == 0 for row in data2), "INT default incorrect!"
-print("✓ PASS: INT column added with default value 0")
+print("[v] PASS: INT column added with default value 0")
 
 # Test 3: Persistence
 print("\n[TEST 3] Metadata Persistence")
@@ -67,15 +67,15 @@ print(f"After reload - Columns: {desc3['columns']}")
 print(f"After reload - Foreign Keys: {desc3['foreign_keys']}")
 assert desc3['foreign_keys'] == {'dept_id': 'departments.id'}, "FK not persisted!"
 assert desc3['columns'] == ['id', 'name', 'dept_id', 'email', 'salary'], "Schema not persisted!"
-print("✓ PASS: All metadata persisted correctly")
+print("[v] PASS: All metadata persisted correctly")
 
 print("\n" + "="*70)
-print("✅ ALL FEATURES VERIFIED AND WORKING!")
+print("[PASS] ALL FEATURES VERIFIED AND WORKING!")
 print("="*70)
 print("\nImplemented Features:")
-print("  ✓ Foreign Key constraints (metadata storage)")
-print("  ✓ ALTER TABLE ADD COLUMN (schema modification)")
-print("  ✓ Type-based default values")
-print("  ✓ Atomic operations")
-print("  ✓ Metadata persistence")
+print("  [v] Foreign Key constraints (metadata storage)")
+print("  [v] ALTER TABLE ADD COLUMN (schema modification)")
+print("  [v] Type-based default values")
+print("  [v] Atomic operations")
+print("  [v] Metadata persistence")
 print("\n" + "="*70)

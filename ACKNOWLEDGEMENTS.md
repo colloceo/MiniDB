@@ -217,8 +217,8 @@ This approach reflects the future of software engineering: **humans and AI worki
 ---
 
 **Project Repository**: [MiniDB](https://github.com/collins-odhiambo/MiniDB) *(if applicable)*  
-**Developer**: Collins Odhiambo  
-**Contact**: [Your Email/LinkedIn] *(optional)*  
+**Developer**: Collins Odhiambo Otieno
+**Contact**: otienocollins0549@gmail.com  
 **Challenge**: Pesapal Junior Dev Challenge '26  
 **Date**: January 2026
 

@@ -60,7 +60,7 @@ def print_dict_as_table(data):
                 'Column': col,
                 'Type': data['column_types'].get(col, 'UNKNOWN'),
                 'Key': 'PRI' if col == data.get('primary_key') else 'UNI' if col in data.get('unique_columns', []) else 'MUL' if col in data.get('foreign_keys', {}) else '',
-                'Details': f"Ref: {data['foreign_keys'][col]}" if col in data.get('foreign_keys', {}) else '—'
+                'Details': f"Ref: {data['foreign_keys'][col]}" if col in data.get('foreign_keys', {}) else '-'
             })
         print_table(rows)
     else:

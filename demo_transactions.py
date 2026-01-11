@@ -21,13 +21,13 @@ print("\n📋 Step 1: Setting up Banking Database")
 print("-"*70)
 db.execute_query("CREATE TABLE accounts (id INT, name STR, balance INT)")
 db.execute_query("CREATE TABLE transactions (id INT, from_account INT, to_account INT, amount INT)")
-print("✓ Created tables: accounts, transactions")
+print("[v] Created tables: accounts, transactions")
 
 # Insert initial data
 db.execute_query("INSERT INTO accounts VALUES (1, 'Alice', 1000)")
 db.execute_query("INSERT INTO accounts VALUES (2, 'Bob', 500)")
 db.execute_query("INSERT INTO accounts VALUES (3, 'Charlie', 750)")
-print("✓ Inserted initial account data")
+print("[v] Inserted initial account data")
 
 accounts = db.execute_query("SELECT * FROM accounts")
 print("\nInitial Balances:")
@@ -46,7 +46,7 @@ print("\nTransferring $200 from Alice to Bob...")
 db.execute_query("UPDATE accounts SET balance = 800 WHERE id = 1")  # Alice -200
 db.execute_query("UPDATE accounts SET balance = 700 WHERE id = 2")  # Bob +200
 db.execute_query("INSERT INTO transactions VALUES (1, 1, 2, 200)")
-print("  ✓ Changes staged in transaction")
+print("  [v] Changes staged in transaction")
 
 print("\nBalances in transaction (before commit):")
 accounts_in_tx = db.execute_query("SELECT * FROM accounts")
@@ -73,7 +73,7 @@ print("\nAttempting to transfer $1000 from Bob to Charlie...")
 print("  (Bob only has $700, but we'll try anyway)")
 db.execute_query("UPDATE accounts SET balance = -300 WHERE id = 2")  # Bob -1000 (negative!)
 db.execute_query("UPDATE accounts SET balance = 1750 WHERE id = 3")  # Charlie +1000
-print("  ✓ Changes staged")
+print("  [v] Changes staged")
 
 print("\nBalances in transaction (invalid state):")
 accounts_invalid = db.execute_query("SELECT * FROM accounts")
@@ -81,7 +81,7 @@ for acc in accounts_invalid:
     status = " ⚠️ NEGATIVE!" if acc['balance'] < 0 else ""
     print(f"  {acc['name']}: ${acc['balance']}{status}")
 
-print("\n❌ Detected invalid state! Rolling back transaction...")
+print("\n[FAIL] Detected invalid state! Rolling back transaction...")
 rollback_result = db.execute_query("ROLLBACK")
 print(f"  {rollback_result}")
 
@@ -137,11 +137,11 @@ print("-"*70)
 
 print("Direct INSERT without transaction...")
 db.execute_query("INSERT INTO accounts VALUES (4, 'David', 1000)")
-print("  ✓ Immediately committed to disk")
+print("  [v] Immediately committed to disk")
 
 print("\nDirect UPDATE without transaction...")
 db.execute_query("UPDATE accounts SET balance = 1100 WHERE id = 4")
-print("  ✓ Immediately committed to disk")
+print("  [v] Immediately committed to disk")
 
 accounts_final = db.execute_query("SELECT * FROM accounts")
 print("\nAll accounts:")
@@ -150,22 +150,22 @@ for acc in accounts_final:
 
 # Summary
 print("\n" + "="*70)
-print("✅ TRANSACTION DEMONSTRATION COMPLETE")
+print("[PASS] TRANSACTION DEMONSTRATION COMPLETE")
 print("="*70)
 
 print("\nFeatures Demonstrated:")
-print("  ✓ BEGIN TRANSACTION - Start isolated transaction")
-print("  ✓ COMMIT - Save all changes atomically")
-print("  ✓ ROLLBACK - Discard invalid changes")
-print("  ✓ Multi-table transactions - Accounts + Transactions")
-print("  ✓ Multi-step transactions - Multiple operations")
-print("  ✓ Transaction isolation - Changes visible only in transaction")
-print("  ✓ Auto-commit mode - Direct operations without transaction")
+print("  [v] BEGIN TRANSACTION - Start isolated transaction")
+print("  [v] COMMIT - Save all changes atomically")
+print("  [v] ROLLBACK - Discard invalid changes")
+print("  [v] Multi-table transactions - Accounts + Transactions")
+print("  [v] Multi-step transactions - Multiple operations")
+print("  [v] Transaction isolation - Changes visible only in transaction")
+print("  [v] Auto-commit mode - Direct operations without transaction")
 
 print("\nUse Cases Shown:")
-print("  ✓ Money transfers (atomicity)")
-print("  ✓ Error recovery (rollback)")
-print("  ✓ Batch operations (multiple transfers)")
-print("  ✓ Data consistency (all or nothing)")
+print("  [v] Money transfers (atomicity)")
+print("  [v] Error recovery (rollback)")
+print("  [v] Batch operations (multiple transfers)")
+print("  [v] Data consistency (all or nothing)")
 
 print("\n" + "="*70 + "\n")

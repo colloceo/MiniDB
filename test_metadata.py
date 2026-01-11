@@ -15,12 +15,15 @@ def test_metadata():
     print("Executing SHOW TABLES...")
     res = db.execute_query("SHOW TABLES")
     print(f"Result: {res}")
-    if set(res) == {"users", "posts"}:
+    
+    # New format is list of dicts: [{'table_name': 'name'}, ...]
+    table_names = {row['table_name'] for row in res}
+    if table_names == {"users", "posts"}:
         print("[v] SHOW TABLES works correctly.")
     else:
         print(f"[x] SHOW TABLES failed: {res}")
 
-    # 2. Test get_tables() method
+    # 2. Test get_tables() method (still returns list of strings)
     print("\nCalling db.get_tables()...")
     res_method = db.get_tables()
     print(f"Result: {res_method}")

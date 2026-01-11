@@ -40,9 +40,9 @@ print(f"  Column Types: {desc['column_types']}")
 print(f"  Foreign Keys: {desc['foreign_keys']}")
 
 if desc['foreign_keys'] == {'course_id': 'courses.id'}:
-    print("\n✓ PASS: Foreign key correctly stored!")
+    print("\n[v] PASS: Foreign key correctly stored!")
 else:
-    print(f"\n✗ FAIL: Expected {{'course_id': 'courses.id'}}, got {desc['foreign_keys']}")
+    print(f"\n[x] FAIL: Expected {{'course_id': 'courses.id'}}, got {desc['foreign_keys']}")
 
 # Test 3: Verify metadata persistence
 print("\n[TEST 3] Testing metadata persistence")
@@ -54,9 +54,9 @@ desc2 = db2.execute_query("DESCRIBE students")
 print(f"After reload - Foreign Keys: {desc2['foreign_keys']}")
 
 if desc2['foreign_keys'] == {'course_id': 'courses.id'}:
-    print("✓ PASS: Foreign key persisted across database reload!")
+    print("[v] PASS: Foreign key persisted across database reload!")
 else:
-    print(f"✗ FAIL: Foreign key not persisted correctly")
+    print(f"[x] FAIL: Foreign key not persisted correctly")
 
 # Test 4: Multiple foreign keys
 print("\n[TEST 4] Table with multiple foreign keys")
@@ -76,9 +76,9 @@ expected_fks = {
 }
 
 if desc3['foreign_keys'] == expected_fks:
-    print("✓ PASS: Multiple foreign keys correctly stored!")
+    print("[v] PASS: Multiple foreign keys correctly stored!")
 else:
-    print(f"✗ FAIL: Expected {expected_fks}, got {desc3['foreign_keys']}")
+    print(f"[x] FAIL: Expected {expected_fks}, got {desc3['foreign_keys']}")
 
 # Test 5: Parser test - verify correct extraction
 print("\n[TEST 5] Parser extraction test")
@@ -95,9 +95,9 @@ print(f"Parsed columns: {parsed['columns']}")
 print(f"Parsed foreign_keys: {parsed['foreign_keys']}")
 
 if parsed['foreign_keys'] == {'ref_id': 'other.id'}:
-    print("✓ PASS: Parser correctly extracts foreign key!")
+    print("[v] PASS: Parser correctly extracts foreign key!")
 else:
-    print(f"✗ FAIL: Parser extraction failed")
+    print(f"[x] FAIL: Parser extraction failed")
 
 print("\n" + "=" * 70)
 print("FOREIGN KEY TESTS COMPLETE")

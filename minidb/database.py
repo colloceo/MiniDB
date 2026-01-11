@@ -413,8 +413,7 @@ class MiniDB:
             if key not in hash_map:
                 hash_map[key] = []
             hash_map[key].append(row)
-            
-        # Probe Phase: Iterate through the larger table and check for matches
+        
         for p_row in probe_rows:
             key = p_row.get(probe_col)
             if key in hash_map:

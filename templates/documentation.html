@@ -17,6 +17,10 @@
                     <a class="nav-link py-2 ps-4 small" href="#insert">INSERT INTO</a>
                     <a class="nav-link py-2 ps-4 small" href="#select">SELECT & JOIN</a>
                     <a class="nav-link py-2 ps-4 small" href="#update-delete">UPDATE & DELETE</a>
+                    <a class="nav-link py-2" href="#indexing">Indexing & Scaling</a>
+                    <a class="nav-link py-2" href="#security">Security</a>
+                    <a class="nav-link py-2" href="#concurrency">Concurrency</a>
+                    <a class="nav-link py-2" href="#performance">Performance</a>
                     <a class="nav-link py-2" href="#transactions">Transactions</a>
                     <a class="nav-link py-2" href="#python-api">Python API</a>
                     <hr class="my-4 mx-3 opacity-10">
@@ -154,6 +158,133 @@ DELETE FROM users WHERE id = 1</code></pre>
 
             <hr class="my-5 opacity-10">
 
+            <!-- Indexing & Scaling -->
+            <section id="indexing" class="mb-5">
+                <h2 class="fw-bold text-dark mb-4">Indexing & Scaling</h2>
+                <p>
+                    MiniDB is built to handle datasets larger than available RAM by utilizing smart on-disk structures.
+                </p>
+
+                <h4 class="fw-bold">Disk-Based Binary Index (O(log N))</h4>
+                <p>
+                    Unlike many lightweight databases that load their entire index into memory, MiniDB implements a
+                    <strong>Disk-Based Binary Search Index</strong>.
+                </p>
+                <ul>
+                    <li><strong>Persistence</strong>: Primary keys and their byte-offsets are stored in
+                        <code>.idx</code> binary files.
+                    </li>
+                    <li><strong>Zero-RAM Lookup</strong>: When searching for a primary key (e.g.,
+                        <code>id = 101</code>), the engine performs a binary search directly on the disk file.
+                    </li>
+                    <li><strong>Seek Performance</strong>: Once the offset is found, the engine uses
+                        <code>f.seek()</code> to jump directly to the row in the <code>.jsonl</code> file, avoiding a
+                        full table scan.
+                    </li>
+                </ul>
+
+                <h4 class="fw-bold mt-4">Streaming Scans</h4>
+                <p>
+                    MiniDB uses Python generators for all table scans (<code>SELECT *</code>). This ensures that even if
+                    a table has 10 million rows, only one row is held in memory at any given time.
+                </p>
+            </section>
+
+            <hr class="my-5 opacity-10">
+
+            <!-- Security -->
+            <section id="security" class="mb-5">
+                <h2 class="fw-bold text-dark mb-4">Security</h2>
+                <p>
+                    MiniDB protects your data against common web vulnerabilities, specifically <strong>SQL
+                        Injection</strong>.
+                </p>
+
+                <h4 class="fw-bold">Parameterized Queries</h4>
+                <p>
+                    Always use <code>?</code> placeholders when executing queries with user-provided input. This ensures
+                    that the input is treated as literal data and not as executable SQL code.
+                </p>
+
+                <h6 class="fw-bold mt-3">The Safe Way (Parameterized):</h6>
+                <pre><code class="python"># User input is automatically escaped and sanitized
+name = "O'Connor'); DROP TABLE users; --"
+db.execute_query("INSERT INTO users VALUES (?, ?)", (1, name))</code></pre>
+
+                <h6 class="fw-bold mt-3">The Unsafe Way (String Formatting):</h6>
+                <pre><code class="python"># ❌ VULNERABLE TO SQL INJECTION
+db.execute_query(f"INSERT INTO users VALUES (1, '{name}')")</code></pre>
+
+                <div class="alert alert-info border-0 bg-light">
+                    <i class="fas fa-shield-alt me-2 text-primary"></i>
+                    <strong>Auto-Sanitization:</strong> MiniDB automatically escapes single quotes and validates data
+                    types (INT/STR/FLOAT) before any insertion or update.
+                </div>
+            </section>
+
+            <!-- Concurrency -->
+            <section id="concurrency" class="mb-5">
+                <h2 class="fw-bold text-dark mb-4">Concurrency & Locking</h2>
+                <p>
+                    MiniDB is designed to be multi-process safe. It ensures that data integrity is maintained even when
+                    multiple users or scripts are writing to the database simultaneously.
+                </p>
+
+                <h4 class="fw-bold">Pessimistic Locking</h4>
+                <p>
+                    The engine utilizes a <code>LockManager</code> that enforces file-based locking. When a write
+                    operation (INSERT, UPDATE, DELETE) begins:
+                </p>
+                <ul>
+                    <li><strong>Acquisition</strong>: A <code>.lock</code> file is created for the specific table.</li>
+                    <li><strong>Exclusion</strong>: Other processes attempting to write to the same table will wait
+                        (with a timeout) until the lock is released.</li>
+                    <li><strong>Safety</strong>: This prevents the "lost update" problem where two processes overwrite
+                        each other's data.</li>
+                </ul>
+            </section>
+
+            <hr class="my-5 opacity-10">
+
+            <!-- Performance Internals -->
+            <section id="performance" class="mb-5">
+                <h2 class="fw-bold text-dark mb-4">Performance Internals</h2>
+                <p>
+                    Behind the scenes, MiniDB uses advanced algorithms to keep your queries fast.
+                </p>
+
+                <h4 class="fw-bold">Hash Joins (O(N + M))</h4>
+                <p>
+                    While basic databases use Nested Loops (slow O(N*M)), MiniDB uses a <strong>Hash Join</strong>:
+                </p>
+                <ol>
+                    <li><strong>Build</strong>: Smallest table is loaded into a temporary memory hash map.</li>
+                    <li><strong>Probe</strong>: Larger table is scanned once, and matches are pulled from the hash map
+                        in constant time.</li>
+                </ol>
+
+                <h4 class="fw-bold mt-4">Atomic Save Strategy</h4>
+                <p>
+                    MiniDB ensures that a crash mid-save won't corrupt your data. It follows a 3-step process:
+                </p>
+                <div class="d-flex gap-3 mt-3">
+                    <div class="p-3 bg-light rounded-3 flex-fill text-center">
+                        <div class="fw-bold text-primary">1. Stage</div>
+                        <div class="small">Write to <code>.tmp</code> file</div>
+                    </div>
+                    <div class="p-3 bg-light rounded-3 flex-fill text-center">
+                        <div class="fw-bold text-primary">2. Flush</div>
+                        <div class="small">Force <code>fsync</code> to hardware</div>
+                    </div>
+                    <div class="p-3 bg-light rounded-3 flex-fill text-center">
+                        <div class="fw-bold text-primary">3. Swap</div>
+                        <div class="small">Atomic <code>os.rename</code></div>
+                    </div>
+                </div>
+            </section>
+
+            <hr class="my-5 opacity-10">
+
             <!-- Transactions -->
             <section id="transactions" class="mb-5">
                 <h2 class="fw-bold text-dark mb-4">Transactions</h2>
@@ -194,8 +325,16 @@ db.execute_query("CREATE TABLE logs (id INT, event STR)")
 db.execute_query("INSERT INTO logs VALUES (1, 'Application Started')")
 
 # Retrieve results
-results = db.execute_query("SELECT * FROM logs")
+results = db.execute_query("SELECT * FROM logs WHERE event = ?", ("Login",))
 print(results)</code></pre>
+
+                <h4 class="fw-bold mt-4">Advanced Querying</h4>
+                <p>The <code>execute_query</code> method returns different types based on the command:</p>
+                <ul>
+                    <li><strong>SELECT</strong>: Returns a <code>list</code> of <code>dict</code> objects.</li>
+                    <li><strong>DESCRIBE</strong>: Returns a <code>dict</code> containing schema metadata.</li>
+                    <li><strong>INSERT/UPDATE/DELETE</strong>: Returns a success/error <code>str</code>.</li>
+                </ul>
             </section>
 
             <footer class="mt-5 pt-5 border-top text-center text-muted small">

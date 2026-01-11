@@ -210,26 +210,44 @@ class MiniDB:
             
             if cmd_type == 'SELECT':
                 limit = parsed.get('limit')
-                # SELECT always reads from current state
+                condition = parsed.get('condition')
+                columns = parsed.get('columns', '*')
+                
+                # Handle nested subquery in WHERE clause
+                if condition and isinstance(condition['value'], str) and condition['value'].startswith('(') and 'SELECT' in condition['value'].upper():
+                    sub_sql = condition['value'][1:-1].strip()
+                    sub_res = self.execute_query(sub_sql)
+                    
+                    if isinstance(sub_res, list):
+                        # Flatten subquery result to a simple list of values
+                        if sub_res and isinstance(sub_res[0], dict):
+                            flattened = []
+                            for row in sub_res:
+                                flattened.extend(row.values())
+                            condition['value'] = flattened
+                        else:
+                            condition['value'] = sub_res
+
+                # Execution Logic
                 if self.transaction.in_transaction and table_name in self.transaction.staging_area:
                     # Read from staging area if modified in transaction
                     staged_data = self.transaction.staging_area[table_name]['data']
-                    condition = parsed.get('condition')
                     res = staged_data
                     if condition:
-                        # Apply WHERE filter to staged data
                         res = [row for row in staged_data 
                                 if table._matches_condition(row, condition['column'], 
                                                            condition['operator'], condition['value'])]
                     if limit:
-                        return res[:limit]
-                    return res
+                        res = res[:limit]
                 else:
                     # Read from disk
-                    condition = parsed.get('condition')
                     if condition:
-                        return table.select_where(condition['column'], condition['operator'], condition['value'], limit=limit)
-                    return table.select_all(limit=limit)
+                        res = table.select_where(condition['column'], condition['operator'], condition['value'], limit=limit)
+                    else:
+                        res = table.select_all(limit=limit)
+                
+                # Apply column projection
+                return table.project_columns(res, columns)
             
             if cmd_type == 'DELETE':
                 condition = parsed['condition']

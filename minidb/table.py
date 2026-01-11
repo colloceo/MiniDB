@@ -226,8 +226,24 @@ class Table:
         if operator == '<': return row_value < target_value
         if operator == '>=': return row_value >= target_value
         if operator == '<=': return row_value <= target_value
+        if operator == 'IN':
+            if isinstance(target_value, list):
+                return row_value in target_value
+            return row_value == target_value
         
         return False
+
+    def project_columns(self, rows, columns_str):
+        """Helper to return only specific columns from a list of rows."""
+        if columns_str == '*':
+            return rows
+        
+        cols = [c.strip() for c in columns_str.split(',')]
+        result = []
+        for row in rows:
+            new_row = {k: row[k] for k in cols if k in row}
+            result.append(new_row)
+        return result
 
     def add_column(self, column_name, column_type=None):
         """Adds a new column to the table schema and updates all existing rows."""

@@ -8,7 +8,7 @@ class SQLParser:
             'CREATE': re.compile(r"CREATE\s+TABLE\s+(\w+)\s*\((.*)\)", re.IGNORECASE),
             'INSERT': re.compile(r"INSERT\s+INTO\s+(\w+)\s+VALUES\s*\((.*)\)", re.IGNORECASE),
             'SELECT_JOIN': re.compile(r"SELECT\s+\*\s+FROM\s+(\w+)\s+JOIN\s+(\w+)\s+ON\s+(\w+)\.(\w+)\s*=\s*(\w+)\.(\w+)", re.IGNORECASE),
-            'SELECT': re.compile(r"SELECT\s+\*\s+FROM\s+(\w+)(?:\s+WHERE\s+(\w+)\s*(>=|<=|!=|>|<|=)\s*(.*?))?(?:\s+LIMIT\s+(\d+))?$", re.IGNORECASE),
+            'SELECT': re.compile(r"SELECT\s+(\*|[\w,\s]+)\s+FROM\s+(\w+)(?:\s+WHERE\s+(\w+)\s*(>=|<=|!=|>|<|=|\s+IN\s+)\s*(.*?))?(?:\s+LIMIT\s+(\d+))?$", re.IGNORECASE),
             'DELETE': re.compile(r"DELETE\s+FROM\s+(\w+)\s+WHERE\s+(\w+)\s*(>=|<=|!=|>|<|=)\s*(.*)", re.IGNORECASE),
             'UPDATE': re.compile(r"UPDATE\s+(\w+)\s+SET\s+(\w+)\s*=\s*(.*)\s+WHERE\s+(\w+)\s*(>=|<=|!=|>|<|=)\s*(.*)", re.IGNORECASE),
             'ALTER_TABLE': re.compile(r"ALTER\s+TABLE\s+(\w+)\s+ADD\s+(\w+)\s+(\w+)", re.IGNORECASE),
@@ -90,19 +90,21 @@ class SQLParser:
             }
         
         elif cmd_type == 'SELECT':
-            table_name = match.group(1)
+            columns = match.group(1).strip()
+            table_name = match.group(2)
             condition = None
-            if match.group(2) and match.group(3) and match.group(4):
+            if match.group(3) and match.group(4) and match.group(5):
                 condition = {
-                    'column': match.group(2),
-                    'operator': match.group(3),
-                    'value': self._infer_type(match.group(4).strip())
+                    'column': match.group(3),
+                    'operator': match.group(4).strip().upper(),
+                    'value': self._infer_type(match.group(5).strip())
                 }
             return {
                 'type': 'SELECT',
+                'columns': columns,
                 'table': table_name,
                 'condition': condition,
-                'limit': int(match.group(5)) if len(match.groups()) >= 5 and match.group(5) else None
+                'limit': int(match.group(6)) if len(match.groups()) >= 6 and match.group(6) else None
             }
         
         elif cmd_type == 'SELECT_JOIN':

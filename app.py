@@ -188,26 +188,29 @@ def insert_record(table_name):
         return f"Table {table_name} not found.", 404
         
     columns = []
-    values = []
+    params = []
     
     for col in desc['columns']:
         val = request.form.get(col)
         if val is not None and val != "":
             columns.append(col)
-            # Handle types
+            # Handle types for parameters
             col_type = desc['column_types'].get(col, 'str').lower()
             if col_type == 'int':
-                values.append(val)
+                try: params.append(int(val))
+                except: params.append(0)
             elif col_type == 'float':
-                values.append(val)
+                try: params.append(float(val))
+                except: params.append(0.0)
             else:
-                values.append(f"'{val}'")
+                params.append(val)
     
     if not columns:
         return redirect(url_for("view_table", table_name=table_name, msg="Error: No data provided"))
         
-    query = f"INSERT INTO {table_name} ({', '.join(columns)}) VALUES ({', '.join(values)})"
-    msg = db.execute_query(query)
+    placeholders = ", ".join(["?" for _ in range(len(params))])
+    query = f"INSERT INTO {table_name} ({', '.join(columns)}) VALUES ({placeholders})"
+    msg = db.execute_query(query, tuple(params))
     
     return redirect(url_for("view_table", table_name=table_name, msg=msg))
 
@@ -225,6 +228,7 @@ def update_record(table_name):
         return redirect(url_for("view_table", table_name=table_name, msg="Error: Primary key missing"))
         
     updates = []
+    params = []
     for col in desc['columns']:
         if col == pk_col:
             continue
@@ -232,29 +236,35 @@ def update_record(table_name):
         val = request.form.get(col)
         if val is not None:
             col_type = desc['column_types'].get(col, 'str').lower()
+            updates.append(f"{col} = ?")
             if val == "":
-                # Handle empty values based on type if needed, or just set to empty string/0
-                if col_type == 'int':
-                    updates.append(f"{col} = 0")
-                elif col_type == 'float':
-                    updates.append(f"{col} = 0.0")
-                else:
-                    updates.append(f"{col} = ''")
+                if col_type == 'int': params.append(0)
+                elif col_type == 'float': params.append(0.0)
+                else: params.append("")
             else:
-                if col_type == 'int' or col_type == 'float':
-                    updates.append(f"{col} = {val}")
-                else:
-                    updates.append(f"{col} = '{val}'")
+                if col_type == 'int': 
+                    try: params.append(int(val))
+                    except: params.append(0)
+                elif col_type == 'float':
+                    try: params.append(float(val))
+                    except: params.append(0.0)
+                else: 
+                    params.append(val)
     
     if not updates:
         return redirect(url_for("view_table", table_name=table_name, msg="No changes made"))
         
-    # Build where clause with PK type
+    # Build where clause with PK
     pk_type = desc['column_types'].get(pk_col, 'int').lower()
-    pk_clause = f"{pk_col} = {pk_val}" if pk_type in ['int', 'float'] else f"{pk_col} = '{pk_val}'"
+    try:
+        pk_val_typed = int(pk_val) if pk_type in ['int', 'float'] else pk_val
+    except:
+        pk_val_typed = pk_val
+
+    query = f"UPDATE {table_name} SET {', '.join(updates)} WHERE {pk_col} = ?"
+    params.append(pk_val_typed)
     
-    query = f"UPDATE {table_name} SET {', '.join(updates)} WHERE {pk_clause}"
-    msg = db.execute_query(query)
+    msg = db.execute_query(query, tuple(params))
     
     return redirect(url_for("view_table", table_name=table_name, msg=msg))
 
@@ -266,9 +276,16 @@ def delete_record(table_name, pk_value):
         return f"Table {table_name} not found.", 404
         
     pk_col = desc['primary_key']
-    # Execute the delete query
-    query = f"DELETE FROM {table_name} WHERE {pk_col} = {pk_value}"
-    msg = db.execute_query(query)
+    pk_type = desc['column_types'].get(pk_col, 'int').lower()
+    
+    try:
+        pk_val_typed = int(pk_value) if pk_type in ['int', 'float'] else pk_value
+    except:
+        pk_val_typed = pk_value
+
+    # Execute the delete query using parameters
+    query = f"DELETE FROM {table_name} WHERE {pk_col} = ?"
+    msg = db.execute_query(query, (pk_val_typed,))
     
     return redirect(url_for("view_table", table_name=table_name, msg=msg))
 

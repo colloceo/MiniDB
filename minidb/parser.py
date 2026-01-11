@@ -232,7 +232,8 @@ class SQLParser:
         # Remove quotes if present
         if (value.startswith("'") and value.endswith("'")) or \
            (value.startswith('"') and value.endswith('"')):
-            return value[1:-1]
+            content = value[1:-1]
+            return content.replace("''", "'")
         
         # Try numeric types
         try:

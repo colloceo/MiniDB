@@ -196,16 +196,20 @@ class MiniDB:
         except IOError as e:
             raise DBError(f"Failed to save metadata: {e}")
 
-    def execute_query(self, query_string: str) -> Any:
+    def execute_query(self, query_string: str, params: tuple = None) -> Any:
         """Parses and executes a SQL query on the system.
         
         Args:
             query_string: The raw SQL string to execute.
+            params: Optional tuple of values to substitute for '?' placeholders.
             
         Returns:
             Any: The result of the query (list of rows, success message, or error string).
         """
         try:
+            if params:
+                query_string = self._sanitize_query(query_string, params)
+            
             parsed = self.parser.parse(query_string)
             cmd_type = parsed['type']
             
@@ -475,6 +479,41 @@ class MiniDB:
             List[str]: List of table names.
         """
         return list(self.tables.keys())
+
+    def _sanitize_query(self, sql: str, params: tuple) -> str:
+        """Safely injects parameters into a SQL string to prevent SQL injection.
+        
+        Args:
+            sql: SQL string with '?' placeholders.
+            params: Values to inject.
+            
+        Returns:
+            str: Sanitized SQL string.
+            
+        Raises:
+            ValueError: If parameter count mismatch.
+        """
+        parts = sql.split('?')
+        if len(parts) - 1 != len(params):
+            raise ValueError(f"Incorrect number of parameters: expected {len(parts)-1}, got {len(params)}")
+            
+        result = [parts[0]]
+        for i, val in enumerate(params):
+            if isinstance(val, str):
+                # Escape single quotes (replace ' with '') and wrap in quotes
+                safe_val = "'" + val.replace("'", "''") + "'"
+            elif isinstance(val, (int, float)):
+                safe_val = str(val)
+            elif val is None:
+                safe_val = "NULL"
+            else:
+                # Fallback for other types
+                safe_val = "'" + str(val).replace("'", "''") + "'"
+            
+            result.append(safe_val)
+            result.append(parts[i+1])
+            
+        return "".join(result)
 
     def _is_aggregate_query(self, columns_str: str) -> bool:
         """Determines if a SELECT clause contains aggregate functions.

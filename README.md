@@ -59,14 +59,14 @@ MiniDB implements a robust Transaction Manager within the engine:
 - **Staging Area**: Changes during a transaction are kept in a session-specific buffer.
 - **Atomicity**: Supports `BEGIN`, `COMMIT`, and `ROLLBACK` for multi-statement workflows.
 
-### 7. Concurrency: Multi-Process File Locking
+### 7. Security: Parameterized Queries (SQL Injection Protection)
+MiniDB is built with a security-first mindset:
+- **Prepared Statements**: The engine supports `?` placeholders, allowing developers to separate SQL logic from user-provided data.
+- **Strict Sanitization**: Parameters are automatically sanitized, escaped, and typed before entering the execution engine.
+- **Injection Proof**: Defends against classic exploits like `' OR 1=1 --` or malicious `DROP TABLE` injections.
+
+### 8. Concurrency: Multi-Process File Locking
 Leverages a global `LockManager` with pessimistic file-based locks to prevent race conditions during concurrent write operations across multiple processes.
-
-Here is the updated **"How to Run"** section for your README.
-
-It now includes professional instructions for **Docker** (proving you know containerization) and the **CLI/REPL** (proving the tool works without a GUI).
-
-**Copy and replace the existing "How to Run" section with this:**
 
 ---
 

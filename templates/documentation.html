@@ -1,0 +1,295 @@
+{% extends "base.html" %}
+
+{% block title %}Documentation - MiniDB Admin{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-0">
+    <div class="row g-5">
+        <!-- Sticky Sidebar Navigation -->
+        <aside class="col-md-3 d-none d-md-block">
+            <div class="sticky-top pt-4" style="top: 2rem; z-index: 10;">
+                <nav id="toc" class="nav flex-column doc-sidebar">
+                    <h6 class="text-uppercase fw-bold mb-3 small text-muted px-3" style="letter-spacing: 0.1em;">
+                        Contents</h6>
+                    <a class="nav-link py-2" href="#introduction">Introduction</a>
+                    <a class="nav-link py-2" href="#sql-commands">SQL Reference</a>
+                    <a class="nav-link py-2 ps-4 small" href="#create-table">CREATE TABLE</a>
+                    <a class="nav-link py-2 ps-4 small" href="#insert">INSERT INTO</a>
+                    <a class="nav-link py-2 ps-4 small" href="#select">SELECT & JOIN</a>
+                    <a class="nav-link py-2 ps-4 small" href="#update-delete">UPDATE & DELETE</a>
+                    <a class="nav-link py-2" href="#transactions">Transactions</a>
+                    <a class="nav-link py-2" href="#python-api">Python API</a>
+                    <hr class="my-4 mx-3 opacity-10">
+                    <a class="nav-link py-2 text-primary" href="/">
+                        <i class="fas fa-arrow-left me-2"></i> Back to Dashboard
+                    </a>
+                </nav>
+            </div>
+        </aside>
+
+        <!-- Main Content Area -->
+        <main class="col-md-9 border-start ps-5 pt-4 pb-5 content-area">
+
+            <!-- Introduction -->
+            <section id="introduction" class="mb-5">
+                <h2 class="fw-bold text-dark mb-4">Introduction</h2>
+                <p class="lead text-secondary">
+                    MiniDB is a lightweight, high-performance relational database engine written in Python. It is
+                    designed for developers who need a simple, file-based RDBMS for prototyping, small applications, or
+                    educational purposes.
+                </p>
+                <p>
+                    Unlike traditional databases that require complex server setups, MiniDB stores data in transparent
+                    JSON files while maintaining relational features like primary keys, unique constraints, and foreign
+                    key integrity.
+                </p>
+
+                <h4 class="mt-4 fw-bold">Why MiniDB?</h4>
+                <div class="row mt-3 g-4">
+                    <div class="col-md-6">
+                        <div class="feature-box">
+                            <h6 class="fw-bold mb-1">Zero Configuration</h6>
+                            <p class="small text-muted mb-0">Just import and start querying. No servers, no sockets.</p>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="feature-box">
+                            <h6 class="fw-bold mb-1">ACID Compliance</h6>
+                            <p class="small text-muted mb-0">Full transaction support with BEGIN, COMMIT, and ROLLBACK.
+                            </p>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="feature-box">
+                            <h6 class="fw-bold mb-1">Strict Types</h6>
+                            <p class="small text-muted mb-0">Enforces INT, STR, and FLOAT types for data reliability.
+                            </p>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="feature-box">
+                            <h6 class="fw-bold mb-1">Modern UI</h6>
+                            <p class="small text-muted mb-0">Built-in visual management dashboard and SQL console.</p>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <hr class="my-5 opacity-10">
+
+            <!-- SQL Reference -->
+            <section id="sql-commands" class="mb-5">
+                <h2 class="fw-bold text-dark mb-4">SQL Reference</h2>
+                <p>MiniDB supports a subset of standard SQL syntax optimized for core relational operations.</p>
+
+                <!-- CREATE TABLE -->
+                <div id="create-table" class="mt-5">
+                    <h4 class="fw-bold">CREATE TABLE</h4>
+                    <p>Defines a new table schema with optional constraints like PRIMARY KEY and FOREIGN KEY.</p>
+                    <pre><code class="sql">-- Example Table Definition
+CREATE TABLE users (
+    id INT PRIMARY KEY,
+    name STR UNIQUE,
+    email STR,
+    department_id INT,
+    FOREIGN KEY (department_id) REFERENCES departments(id)
+)</code></pre>
+                </div>
+
+                <!-- INSERT -->
+                <div id="insert" class="mt-5">
+                    <h4 class="fw-bold">INSERT INTO</h4>
+                    <p>Adds a new record to a table. All columns defined in the schema must be provided in the correct
+                        order.</p>
+                    <pre><code class="sql">INSERT INTO users VALUES (1, 'Jane Doe', 'jane@example.com', 10)</code></pre>
+                </div>
+
+                <!-- SELECT -->
+                <div id="select" class="mt-5">
+                    <h4 class="fw-bold">SELECT & JOIN</h4>
+                    <p>Retrieves data from one or more tables. Supports filtered queries using WHERE and relational
+                        stitching using JOIN.</p>
+                    <pre><code class="sql">-- Basic Select
+SELECT * FROM users WHERE id = 1
+
+-- Relational Join
+SELECT * FROM users JOIN departments ON users.department_id = departments.id</code></pre>
+                </div>
+
+                <!-- UPDATE/DELETE -->
+                <div id="update-delete" class="mt-5">
+                    <h4 class="fw-bold">UPDATE & DELETE</h4>
+                    <p>Modifies or removes existing data based on a condition.</p>
+                    <pre><code class="sql">-- Update
+UPDATE users SET email = 'new@example.com' WHERE name = 'Jane Doe'
+
+-- Delete
+DELETE FROM users WHERE id = 1</code></pre>
+                </div>
+            </section>
+
+            <hr class="my-5 opacity-10">
+
+            <!-- Transactions -->
+            <section id="transactions" class="mb-5">
+                <h2 class="fw-bold text-dark mb-4">Transactions</h2>
+                <p>
+                    Transactions allow you to group multiple SQL commands into a single atomic operation. This ensures
+                    that either all changes are saved at once, or none are.
+                </p>
+
+                <h6 class="fw-bold mt-4">Command Flow:</h6>
+                <ul>
+                    <li><code>BEGIN TRANSACTION;</code> — Starts a new staging area.</li>
+                    <li><code>COMMIT;</code> — Safely persists all changes to disk.</li>
+                    <li><code>ROLLBACK;</code> — Discards current changes and reverts to previous state.</li>
+                </ul>
+
+                <pre><code class="sql">BEGIN TRANSACTION;
+UPDATE accounts SET balance = balance - 100 WHERE id = 1;
+UPDATE accounts SET balance = balance + 100 WHERE id = 2;
+COMMIT;</code></pre>
+            </section>
+
+            <hr class="my-5 opacity-10">
+
+            <!-- Python API -->
+            <section id="python-api" class="mb-5">
+                <h2 class="fw-bold text-dark mb-4">Python API</h2>
+                <p>
+                    You can integrate MiniDB directly into your Python scripts without the web dashboard.
+                </p>
+
+                <pre><code class="python">from minidb import MiniDB
+
+# Initialize the engine
+db = MiniDB()
+
+# Execute queries
+db.execute_query("CREATE TABLE logs (id INT, event STR)")
+db.execute_query("INSERT INTO logs VALUES (1, 'Application Started')")
+
+# Retrieve results
+results = db.execute_query("SELECT * FROM logs")
+print(results)</code></pre>
+            </section>
+
+            <footer class="mt-5 pt-5 border-top text-center text-muted small">
+                &copy; 2026 MiniDB Engineering. All rights reserved. Built with Python.
+            </footer>
+        </main>
+    </div>
+</div>
+
+<style>
+    :root {
+        --toc-active: #0d6efd;
+        --doc-text: #333333;
+        --code-bg: #f5f5f5;
+        --code-border: #eeeeee;
+        --sidebar-border: #f0f0f0;
+    }
+
+    body {
+        background-color: #ffffff;
+        color: var(--doc-text);
+        font-family: 'Inter', -apple-system, system-ui, sans-serif;
+    }
+
+    .doc-sidebar .nav-link {
+        color: #666;
+        border-radius: 4px;
+        transition: all 0.2s ease;
+        border-left: 2px solid transparent;
+        margin-bottom: 2px;
+    }
+
+    .doc-sidebar .nav-link:hover {
+        background-color: #f8f9fa;
+        color: var(--toc-active);
+    }
+
+    .doc-sidebar .nav-link.active {
+        color: var(--toc-active);
+        background-color: rgba(13, 110, 253, 0.05);
+        border-left-color: var(--toc-active);
+        font-weight: 600;
+    }
+
+    /* Content Styling */
+    .content-area h2 {
+        font-size: 2rem;
+        letter-spacing: -0.02em;
+    }
+
+    .content-area h4 {
+        margin-top: 2.5rem;
+        font-size: 1.25rem;
+        color: #111;
+    }
+
+    p {
+        line-height: 1.6;
+        margin-bottom: 1.25rem;
+    }
+
+    .feature-box {
+        padding: 1.25rem;
+        border: 1px solid #eee;
+        border-radius: 8px;
+        height: 100%;
+    }
+
+    /* Code Block Styling */
+    pre {
+        background-color: var(--code-bg);
+        border: 1px solid var(--code-border);
+        border-radius: 6px;
+        padding: 1.25rem;
+        margin: 1.5rem 0;
+        overflow-x: auto;
+    }
+
+    pre code {
+        font-family: 'Fira Code', 'Courier New', monospace;
+        font-size: 0.9rem;
+        color: #333;
+    }
+
+    /* Minimal Syntax Highlighting Simulation */
+    .sql {
+        color: #333;
+    }
+
+    code {
+        color: #d63384;
+    }
+
+    /* Inline code */
+</style>
+
+<script>
+    // Smooth scrolling and Sidebar activation
+    document.addEventListener('DOMContentLoaded', () => {
+        const sections = document.querySelectorAll('section, div[id]');
+        const navLinks = document.querySelectorAll('.doc-sidebar .nav-link');
+
+        window.addEventListener('scroll', () => {
+            let current = '';
+            sections.forEach(section => {
+                const sectionTop = section.offsetTop;
+                if (pageYOffset >= sectionTop - 100) {
+                    current = section.getAttribute('id');
+                }
+            });
+
+            navLinks.forEach(link => {
+                link.classList.remove('active');
+                if (link.getAttribute('href').includes(current) && current !== '') {
+                    link.classList.add('active');
+                }
+            });
+        });
+    });
+</script>
+{% endblock %}

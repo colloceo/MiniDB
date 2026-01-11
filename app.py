@@ -1,3 +1,4 @@
+import os
 from flask import Flask, request, render_template, redirect, url_for
 from minidb import MiniDB
 
@@ -32,7 +33,56 @@ def inject_metadata():
 @app.route("/")
 def dashboard():
     """Main dashboard showing system stats."""
-    return render_template("dashboard.html")
+    msg = request.args.get("msg")
+    
+    # Get all tables
+    tables = db.get_tables()
+    total_tables = len(tables)
+    
+    # Calculate total records
+    total_records = 0
+    for table_name in tables:
+        try:
+            data = db.execute_query(f"SELECT * FROM {table_name}")
+            if isinstance(data, list):
+                total_records += len(data)
+        except:
+            pass
+    
+    # Calculate storage size
+    total_size_bytes = 0
+    last_modified = 0
+    
+    if os.path.exists(db.data_dir):
+        for filename in os.listdir(db.data_dir):
+            if filename.endswith('.json'):
+                file_path = os.path.join(db.data_dir, filename)
+                try:
+                    # Get file size
+                    total_size_bytes += os.path.getsize(file_path)
+                    # Get last modified time
+                    mod_time = os.path.getmtime(file_path)
+                    if mod_time > last_modified:
+                        last_modified = mod_time
+                except:
+                    pass
+    
+    # Convert bytes to KB
+    total_size_kb = round(total_size_bytes / 1024, 2)
+    
+    # Format last active time
+    if last_modified > 0:
+        from datetime import datetime
+        last_active = datetime.fromtimestamp(last_modified).strftime('%Y-%m-%d %H:%M:%S')
+    else:
+        last_active = "Never"
+    
+    return render_template("dashboard.html",
+                          total_tables=total_tables,
+                          total_records=total_records,
+                          disk_usage=total_size_kb,
+                          last_active=last_active,
+                          msg=msg)
 
 @app.route("/sql-console", methods=["GET", "POST"])
 def console():
@@ -40,41 +90,71 @@ def console():
     result_type = None
     result_data = None
     last_query = None
+    execution_results = []  # Track results of multiple statements
     
     if request.method == "POST":
-        last_query = request.form.get("query")
-        res = db.execute_query(last_query)
+        last_query = request.form.get("query", "").strip()
         
-        if isinstance(res, list):
-            result_type = 'table'
-            result_data = res
-        elif isinstance(res, str):
-            if res.startswith("Error"):
-                result_type = 'error'
-            else:
-                result_type = 'message'
-            result_data = res
+        # Split by semicolon to support multiple statements
+        statements = [stmt.strip() for stmt in last_query.split(';') if stmt.strip()]
+        
+        if len(statements) == 0:
+            result_type = 'error'
+            result_data = "Error: No SQL statement provided"
+        elif len(statements) == 1:
+            # Single statement - original behavior
+            res = db.execute_query(statements[0])
+            
+            if isinstance(res, list):
+                result_type = 'table'
+                result_data = res
+            elif isinstance(res, str):
+                if res.startswith("Error") or "Error" in res:
+                    result_type = 'error'
+                else:
+                    result_type = 'message'
+                result_data = res
+            elif isinstance(res, dict):
+                # DESCRIBE returns dict
+                result_type = 'dict'
+                result_data = res
+        else:
+            # Multiple statements - execute sequentially
+            for i, stmt in enumerate(statements, 1):
+                try:
+                    res = db.execute_query(stmt)
+                    
+                    # Track each result
+                    execution_results.append({
+                        'number': i,
+                        'statement': stmt,
+                        'result': res,
+                        'type': 'table' if isinstance(res, list) else 'message' if isinstance(res, str) else 'dict'
+                    })
+                except Exception as e:
+                    execution_results.append({
+                        'number': i,
+                        'statement': stmt,
+                        'result': f"Error: {e}",
+                        'type': 'error'
+                    })
+                    # Continue executing remaining statements
+            
+            result_type = 'multi'
+            result_data = execution_results
             
     return render_template("console.html", 
                            result_type=result_type, 
                            result_data=result_data, 
-                           last_query=last_query)
+                           last_query=last_query,
+                           execution_results=execution_results)
 
-@app.route("/table/<table_name>", methods=["GET", "POST"])
+@app.route("/table/<table_name>", methods=["GET"])
 def view_table(table_name):
     """Generic table view for any table."""
     msg = request.args.get("msg")
     view = request.args.get("view", "browse") # 'browse' or 'structure'
     
-    # Handle student insertion (Legacy support)
-    if request.method == "POST" and table_name == "students":
-        sid = request.form.get("id")
-        name = request.form.get("name")
-        grade = request.form.get("grade")
-        
-        query = f"INSERT INTO students VALUES ({sid}, '{name}', '{grade}')"
-        msg = db.execute_query(query)
-        
     desc = db.execute_query(f"DESCRIBE {table_name}")
     if isinstance(desc, str) and "Error" in desc:
         return f"Table {table_name} not found.", 404
@@ -82,14 +162,101 @@ def view_table(table_name):
     results = db.execute_query(f"SELECT * FROM {table_name}")
     rows = results if isinstance(results, list) else []
     
+    # Enrich column info with types
+    column_defs = []
+    for col in desc['columns']:
+        column_defs.append({
+            'name': col,
+            'type': desc['column_types'].get(col, 'str').upper()
+        })
+    
     return render_template("browse_table.html", 
                            rows=rows, 
                            columns=desc['columns'], 
+                           column_defs=column_defs,
                            primary_key=desc['primary_key'],
                            table_name=table_name,
                            active_table=table_name,
                            msg=msg,
                            view=view)
+
+@app.route("/table/<table_name>/insert", methods=["POST"])
+def insert_record(table_name):
+    """Insert a new record into a table."""
+    desc = db.execute_query(f"DESCRIBE {table_name}")
+    if isinstance(desc, str) and "Error" in desc:
+        return f"Table {table_name} not found.", 404
+        
+    columns = []
+    values = []
+    
+    for col in desc['columns']:
+        val = request.form.get(col)
+        if val is not None and val != "":
+            columns.append(col)
+            # Handle types
+            col_type = desc['column_types'].get(col, 'str').lower()
+            if col_type == 'int':
+                values.append(val)
+            elif col_type == 'float':
+                values.append(val)
+            else:
+                values.append(f"'{val}'")
+    
+    if not columns:
+        return redirect(url_for("view_table", table_name=table_name, msg="Error: No data provided"))
+        
+    query = f"INSERT INTO {table_name} ({', '.join(columns)}) VALUES ({', '.join(values)})"
+    msg = db.execute_query(query)
+    
+    return redirect(url_for("view_table", table_name=table_name, msg=msg))
+
+@app.route("/table/<table_name>/update", methods=["POST"])
+def update_record(table_name):
+    """Update an existing record in a table."""
+    desc = db.execute_query(f"DESCRIBE {table_name}")
+    if isinstance(desc, str) and "Error" in desc:
+        return f"Table {table_name} not found.", 404
+        
+    pk_col = desc['primary_key']
+    pk_val = request.form.get(pk_col)
+    
+    if not pk_val:
+        return redirect(url_for("view_table", table_name=table_name, msg="Error: Primary key missing"))
+        
+    updates = []
+    for col in desc['columns']:
+        if col == pk_col:
+            continue
+            
+        val = request.form.get(col)
+        if val is not None:
+            col_type = desc['column_types'].get(col, 'str').lower()
+            if val == "":
+                # Handle empty values based on type if needed, or just set to empty string/0
+                if col_type == 'int':
+                    updates.append(f"{col} = 0")
+                elif col_type == 'float':
+                    updates.append(f"{col} = 0.0")
+                else:
+                    updates.append(f"{col} = ''")
+            else:
+                if col_type == 'int' or col_type == 'float':
+                    updates.append(f"{col} = {val}")
+                else:
+                    updates.append(f"{col} = '{val}'")
+    
+    if not updates:
+        return redirect(url_for("view_table", table_name=table_name, msg="No changes made"))
+        
+    # Build where clause with PK type
+    pk_type = desc['column_types'].get(pk_col, 'int').lower()
+    pk_clause = f"{pk_col} = {pk_val}" if pk_type in ['int', 'float'] else f"{pk_col} = '{pk_val}'"
+    
+    query = f"UPDATE {table_name} SET {', '.join(updates)} WHERE {pk_clause}"
+    msg = db.execute_query(query)
+    
+    return redirect(url_for("view_table", table_name=table_name, msg=msg))
 
 @app.route("/delete/<table_name>/<pk_value>")
 def delete_record(table_name, pk_value):
@@ -158,7 +325,99 @@ def get_table_columns(table_name):
     desc = db.execute_query(f"DESCRIBE {table_name}")
     if isinstance(desc, dict):
         return {"columns": desc['columns']}
-    return {"columns": []}, 404
+    return {" columns": []}, 404
+
+@app.route("/table/<table_name>/drop_column", methods=["POST"])
+def drop_column(table_name):
+    """Drop a column from a table."""
+    column_name = request.form.get("column_name")
+    
+    try:
+        result = db.execute_query(f"ALTER TABLE {table_name} DROP COLUMN {column_name}")
+        
+        if "Error" in str(result):
+            msg = f"Error: {result}"
+        else:
+            msg = f"Success: {result}"
+    except Exception as e:
+        msg = f"Error: {e}"
+    
+    return redirect(url_for('table_structure', table_name=table_name, msg=msg))
+
+@app.route("/table/<table_name>/rename_column", methods=["POST"])
+def rename_column(table_name):
+    """Rename a column in a table."""
+    old_name = request.form.get("old_name")
+    new_name = request.form.get("new_name")
+    
+    try:
+        result = db.execute_query(f"ALTER TABLE {table_name} RENAME COLUMN {old_name} TO {new_name}")
+        
+        if "Error" in str(result):
+            msg = f"Error: {result}"
+        else:
+            msg = f"Success: {result}"
+    except Exception as e:
+        msg = f"Error: {e}"
+    
+    return redirect(url_for('table_structure', table_name=table_name, msg=msg))
+
+@app.route("/table/<table_name>/operations")
+def table_operations(table_name):
+    """Table operations page (rename, delete)."""
+    msg = request.args.get("msg")
+    
+    # Get table info
+    desc = db.execute_query(f"DESCRIBE {table_name}")
+    data = db.execute_query(f"SELECT * FROM {table_name}")
+    
+    column_count = len(desc['columns']) if isinstance(desc, dict) else 0
+    row_count = len(data) if isinstance(data, list) else 0
+    primary_key = desc.get('primary_key', 'id') if isinstance(desc, dict) else 'id'
+    
+    return render_template("operations.html",
+                          table_name=table_name,
+                          active_table=table_name,
+                          column_count=column_count,
+                          row_count=row_count,
+                          primary_key=primary_key,
+                          msg=msg)
+
+@app.route("/table/<table_name>/rename", methods=["POST"])
+def rename_table(table_name):
+    """Rename a table."""
+    new_name = request.form.get("new_name")
+    
+    try:
+        result = db.execute_query(f"ALTER TABLE {table_name} RENAME TO {new_name}")
+        
+        if "Error" in str(result):
+            msg = f"Error: {result}"
+            return redirect(url_for('table_operations', table_name=table_name, msg=msg))
+        else:
+            msg = f"Success: {result}"
+            # Redirect to the new table name
+            return redirect(url_for('view_table', table_name=new_name, msg=msg))
+    except Exception as e:
+        msg = f"Error: {e}"
+        return redirect(url_for('table_operations', table_name=table_name, msg=msg))
+
+@app.route("/table/<table_name>/delete", methods=["POST"])
+def delete_table(table_name):
+    """Delete a table."""
+    try:
+        result = db.execute_query(f"DROP TABLE {table_name}")
+        
+        if "Error" in str(result):
+            msg = f"Error: {result}"
+            return redirect(url_for('table_operations', table_name=table_name, msg=msg))
+        else:
+            msg = f"Success: {result}"
+            # Redirect to dashboard after deletion
+            return redirect(url_for('dashboard', msg=msg))
+    except Exception as e:
+        msg = f"Error: {e}"
+        return redirect(url_for('dashboard', msg=msg))
 
 @app.route("/create_table", methods=["GET", "POST"])
 def create_table():
@@ -217,6 +476,11 @@ def create_table():
     
     # GET request - show form
     return render_template("create_table.html")
+
+@app.route("/documentation")
+def documentation():
+    """Documentation page with SQL reference and examples."""
+    return render_template("documentation.html")
 
 if __name__ == "__main__":
     print("MiniDB Admin Dashboard starting at http://127.0.0.1:5000")

@@ -245,6 +245,122 @@ INSERT INTO users VALUES (2, 'Bob', 'bob@example.com')
 
 ---
 
+#### **DROP COLUMN**
+Remove a column from an existing table:
+```sql
+ALTER TABLE table_name DROP COLUMN column_name
+```
+
+**Example:**
+```sql
+-- Drop email column
+ALTER TABLE users DROP COLUMN email
+
+-- Verify
+DESCRIBE users
+```
+
+**Safety:**
+- ❌ Cannot drop primary key column
+- ✅ Removes column from all rows
+- ✅ Removes associated constraints (UNIQUE, FOREIGN KEY)
+- ✅ Atomic operation with automatic save
+
+#### **RENAME COLUMN**
+Rename an existing column:
+```sql
+ALTER TABLE table_name RENAME COLUMN old_name TO new_name
+```
+
+**Example:**
+```sql
+-- Rename column
+ALTER TABLE users RENAME COLUMN name TO full_name
+
+-- Can rename primary key
+ALTER TABLE users RENAME COLUMN id TO user_id
+
+-- Verify
+DESCRIBE users
+```
+
+**Features:**
+- ✅ Updates all rows automatically
+- ✅ Preserves data
+- ✅ Updates constraints (UNIQUE, FOREIGN KEY, PRIMARY KEY)
+- ✅ Rebuilds indexes
+- ✅ Atomic operation
+
+---
+
+### 10. **TRANSACTIONS**
+Group multiple operations together with atomicity guarantees.
+
+#### **BEGIN TRANSACTION**
+Start a new transaction:
+```sql
+BEGIN TRANSACTION
+-- or simply:
+BEGIN
+```
+
+#### **COMMIT**
+Save all changes to disk:
+```sql
+COMMIT
+```
+
+#### **ROLLBACK**
+Discard all changes:
+```sql
+ROLLBACK
+```
+
+**Behavior:**
+- Changes are staged in memory until COMMIT
+- ROLLBACK discards all staged changes
+- SELECT sees staged changes during transaction
+- Auto-commit mode when no transaction active
+
+**Example: Money Transfer**
+```sql
+-- Start transaction
+BEGIN TRANSACTION
+
+-- Transfer $100 from Alice to Bob
+UPDATE accounts SET balance = 900 WHERE id = 1
+UPDATE accounts SET balance = 600 WHERE id = 2
+
+-- Log the transaction
+INSERT INTO transactions VALUES (1, 1, 2, 100)
+
+-- Commit all changes atomically
+COMMIT
+```
+
+**Example: Rollback on Error**
+```sql
+-- Start transaction
+BEGIN
+
+-- Make changes
+INSERT INTO accounts VALUES (5, 'Eve', 1500)
+UPDATE accounts SET balance = -100 WHERE id = 1  -- Invalid!
+
+-- Detect error, rollback
+ROLLBACK
+
+-- Changes discarded, database unchanged
+```
+
+**Use Cases:**
+- Multi-table updates
+- Batch operations
+- Error recovery
+- Data consistency
+
+---
+
 ## 🚫 Common Mistakes
 
 ### Mistake 1: Missing WHERE keyword

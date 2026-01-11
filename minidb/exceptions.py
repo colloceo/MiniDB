@@ -17,3 +17,11 @@ class DuplicateKeyError(ValidationError):
 class UniqueConstraintError(ValidationError):
     """Raised when a unique constraint is violated."""
     pass
+
+class DatabaseBusyError(DBError):
+    """Raised when a lock cannot be acquired within timeout period."""
+    pass
+
+class SchemaError(DBError):
+    """Raised when a schema modification violates constraints."""
+    pass

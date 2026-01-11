@@ -4,17 +4,17 @@
 
 {% block content %}
 <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
-    <h1 class="h2">
-        <i class="bi bi-diagram-3-fill me-2 text-primary"></i>
-        Table Structure: <span class="text-primary">{{ table_name }}</span>
+    <h1 class="h2 dashboard-title">
+        <i class="fas fa-project-diagram me-2 text-primary"></i>
+        Table Structure: <span class="text-primary fw-bold">{{ table_name }}</span>
     </h1>
     <div class="btn-toolbar mb-2 mb-md-0">
         <div class="btn-group me-2">
             <a href="/table/{{ table_name }}" class="btn btn-sm btn-outline-secondary">
-                <i class="bi bi-table me-1"></i> Browse Data
+                <i class="fas fa-table me-1"></i> Browse Data
             </a>
             <a href="/sql-console" class="btn btn-sm btn-outline-primary">
-                <i class="bi bi-terminal me-1"></i> SQL Console
+                <i class="fas fa-terminal me-1"></i> SQL Console
             </a>
         </div>
     </div>
@@ -22,76 +22,108 @@
 
 <!-- Alert Messages -->
 {% if msg %}
-<div class="alert {% if 'Error' in msg %}alert-danger{% else %}alert-success{% endif %} alert-dismissible fade show"
+<div class="alert {% if 'Error' in msg %}alert-danger{% else %}alert-success{% endif %} alert-dismissible fade show border-0 shadow-sm"
     role="alert">
     {{ msg }}
     <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
 </div>
 {% endif %}
 
+<!-- Tab Navigation -->
+<ul class="nav nav-tabs mb-4 px-3 border-bottom-0">
+    <li class="nav-item">
+        <a class="nav-link" href="/table/{{ table_name }}">
+            <i class="fas fa-eye me-1"></i> Browse Data
+        </a>
+    </li>
+    <li class="nav-item">
+        <a class="nav-link active fw-bold border-bottom-0" href="/table/{{ table_name }}/structure">
+            <i class="fas fa-project-diagram me-1"></i> Structure
+        </a>
+    </li>
+    <li class="nav-item">
+        <a class="nav-link" href="/table/{{ table_name }}/operations">
+            <i class="fas fa-tools me-1"></i> Operations
+        </a>
+    </li>
+</ul>
+
 <!-- Table Structure Card -->
-<div class="card border-0 shadow-sm mb-4">
-    <div class="card-header bg-gradient text-white"
-        style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
-        <h5 class="mb-0">
-            <i class="bi bi-list-columns-reverse me-2"></i> Column Definitions
+<div class="card border-light-gray shadow-xs mb-4">
+    <div class="card-header bg-white py-3 border-bottom">
+        <h5 class="mb-0 fw-bold text-dark">
+            <i class="fas fa-list me-2 text-muted"></i> Column Definitions
         </h5>
     </div>
     <div class="card-body p-0">
         <div class="table-responsive">
-            <table class="table table-hover mb-0">
-                <thead class="table-light">
+            <table class="table table-hover mb-0 align-middle">
+                <thead class="bg-light">
                     <tr>
-                        <th style="width: 5%;">#</th>
-                        <th style="width: 30%;">
-                            <i class="bi bi-tag-fill text-primary me-1"></i> Column Name
-                        </th>
-                        <th style="width: 20%;">
-                            <i class="bi bi-code-square text-success me-1"></i> Data Type
-                        </th>
-                        <th style="width: 15%;">
-                            <i class="bi bi-key-fill text-warning me-1"></i> Key
-                        </th>
-                        <th style="width: 30%;">
-                            <i class="bi bi-info-circle text-info me-1"></i> Details
-                        </th>
+                        <th class="ps-4 py-3 text-muted small fw-bold text-uppercase"
+                            style="width: 5%; letter-spacing: 0.05em;">#</th>
+                        <th class="py-3 text-muted small fw-bold text-uppercase"
+                            style="width: 30%; letter-spacing: 0.05em;">Column Name</th>
+                        <th class="py-3 text-muted small fw-bold text-uppercase"
+                            style="width: 20%; letter-spacing: 0.05em;">Data Type</th>
+                        <th class="py-3 text-muted small fw-bold text-uppercase"
+                            style="width: 15%; letter-spacing: 0.05em;">Key</th>
+                        <th class="pe-4 py-3 text-muted small fw-bold text-uppercase text-end"
+                            style="width: 30%; letter-spacing: 0.05em;">Actions</th>
                     </tr>
                 </thead>
                 <tbody>
                     {% for col in columns %}
                     <tr>
-                        <td class="text-muted">{{ loop.index }}</td>
+                        <td class="ps-4 text-muted small">{{ loop.index }}</td>
                         <td>
-                            <strong class="text-dark">{{ col.name }}</strong>
+                            <span class="fw-bold text-dark">{{ col.name }}</span>
                         </td>
                         <td>
-                            <span class="badge bg-secondary">{{ col.type }}</span>
+                            <span class="badge bg-light text-dark border fw-normal">{{ col.type }}</span>
                         </td>
                         <td>
                             {% if col.key == 'PRI' %}
-                            <span class="badge bg-warning text-dark">
-                                <i class="bi bi-key-fill me-1"></i> PRIMARY
+                            <span class="badge bg-primary shadow-sm" style="font-size: 0.7rem;">
+                                <i class="fas fa-key me-1"></i> PRIMARY
                             </span>
                             {% elif col.key == 'UNI' %}
-                            <span class="badge bg-success">
-                                <i class="bi bi-shield-check me-1"></i> UNIQUE
+                            <span class="badge bg-light text-success border-success border-opacity-25"
+                                style="font-size: 0.7rem; color: #198754 !important;">
+                                <i class="fas fa-shield-alt me-1"></i> UNIQUE
                             </span>
                             {% elif col.key == 'MUL' %}
-                            <span class="badge bg-info">
-                                <i class="bi bi-link-45deg me-1"></i> FOREIGN
+                            <span class="badge bg-light text-info border-info border-opacity-25"
+                                style="font-size: 0.7rem; color: #0dcaf0 !important;">
+                                <i class="fas fa-link me-1"></i> FOREIGN
                             </span>
                             {% else %}
-                            <span class="text-muted">—</span>
+                            <span class="text-muted opacity-50 small">—</span>
+                            {% endif %}
+
+                            {% if col.is_fk %}
+                            <div class="mt-1">
+                                <small class="text-muted" style="font-size: 0.75rem;">
+                                    <i class="fas fa-arrow-right me-1 opacity-50"></i>
+                                    <code>{{ col.fk_ref }}</code>
+                                </small>
+                            </div>
                             {% endif %}
                         </td>
-                        <td>
-                            {% if col.is_fk %}
-                            <small class="text-muted">
-                                <i class="bi bi-arrow-right me-1"></i>
-                                References: <code>{{ col.fk_ref }}</code>
-                            </small>
+                        <td class="pe-4 text-end">
+                            {% if col.key != 'PRI' %}
+                            <div class="btn-group btn-group-sm">
+                                <button type="button" class="btn btn-outline-secondary btn-sm"
+                                    onclick="openRenameModal('{{ col.name }}')" title="Rename column">
+                                    <i class="fas fa-edit"></i>
+                                </button>
+                                <button type="button" class="btn btn-outline-danger btn-sm"
+                                    onclick="openDropModal('{{ col.name }}')" title="Drop column">
+                                    <i class="fas fa-trash"></i>
+                                </button>
+                            </div>
                             {% else %}
-                            <span class="text-muted">—</span>
+                            <span class="text-muted small italic">Locked (PK)</span>
                             {% endif %}
                         </td>
                     </tr>
@@ -100,67 +132,62 @@
             </table>
         </div>
     </div>
-    <div class="card-footer bg-light">
-        <small class="text-muted">
-            <i class="bi bi-info-circle me-1"></i>
+    <div class="card-footer bg-white border-top py-3">
+        <span class="text-muted small">
+            <i class="fas fa-info-circle me-1 opacity-50"></i>
             Total Columns: <strong>{{ columns|length }}</strong>
-        </small>
+        </span>
     </div>
 </div>
 
-<!-- Add Column Card -->
-<div class="card border-0 shadow-sm">
-    <div class="card-header bg-success text-white">
-        <h5 class="mb-0">
-            <i class="bi bi-plus-circle me-2"></i> Add New Column
+<!-- Add Column Section (Panel Style) -->
+<div class="card border-light-gray shadow-xs mb-5">
+    <div class="card-header bg-white py-3 border-bottom">
+        <h5 class="mb-0 fw-bold text-dark">
+            <i class="fas fa-plus-circle me-2 text-primary"></i> Schema Modification
         </h5>
     </div>
-    <div class="card-body">
+    <div class="card-body p-4">
         <form method="POST" id="addColumnForm">
-            <div class="row g-3 align-items-end">
+            <div class="row g-4 align-items-end">
                 <div class="col-md-5">
-                    <label for="column_name" class="form-label fw-bold">
-                        <i class="bi bi-tag text-primary me-1"></i> Column Name
+                    <label for="column_name" class="section-title mb-2 d-block">
+                        New Column Name
                     </label>
-                    <input type="text" class="form-control form-control-lg" id="column_name" name="column_name"
-                        placeholder="e.g., email, age, status" required>
-                    <div class="form-text">Choose a descriptive name for the new column</div>
+                    <input type="text" class="form-control enterprise-input" id="column_name" name="column_name"
+                        placeholder="e.g. status, created_at" required>
+                    <div class="form-text mt-2">Lowercase alphanumeric only.</div>
                 </div>
 
                 <div class="col-md-4">
-                    <label for="column_type" class="form-label fw-bold">
-                        <i class="bi bi-code-square text-success me-1"></i> Data Type
+                    <label for="column_type" class="section-title mb-2 d-block">
+                        Data Type
                     </label>
-                    <select class="form-select form-select-lg" id="column_type" name="column_type" required>
-                        <option value="int">INT - Integer numbers</option>
-                        <option value="str" selected>STR - Text/strings</option>
-                        <option value="float">FLOAT - Decimal numbers</option>
+                    <select class="form-select enterprise-input" id="column_type" name="column_type" required>
+                        <option value="int">INT (Integer)</option>
+                        <option value="str" selected>STR (String)</option>
+                        <option value="float">FLOAT (Decimal)</option>
                     </select>
                 </div>
 
                 <div class="col-md-3">
-                    <button type="submit" class="btn btn-success btn-lg w-100">
-                        <i class="bi bi-plus-circle me-1"></i> Add Column
+                    <button type="submit" class="btn btn-primary w-100 py-2 shadow-sm">
+                        <i class="fas fa-plus me-1"></i> Add Column
                     </button>
                 </div>
             </div>
         </form>
 
-        <div class="alert alert-info mt-4 mb-0" role="alert">
+        <div class="mt-4 p-3 bg-light rounded border border-light">
             <div class="d-flex">
                 <div class="flex-shrink-0">
-                    <i class="bi bi-lightbulb-fill fs-4"></i>
+                    <i class="fas fa-lightbulb text-warning"></i>
                 </div>
                 <div class="flex-grow-1 ms-3">
-                    <h6 class="alert-heading">Default Values</h6>
-                    <p class="mb-0">
-                        When you add a new column, all existing rows will be updated with default values:
+                    <p class="mb-0 small text-secondary">
+                        <strong>Note:</strong> Existing rows will be populated with default values (<code>0</code> for
+                        INT, <code>''</code> for STR, <code>0.0</code> for FLOAT).
                     </p>
-                    <ul class="mb-0 mt-2">
-                        <li><strong>INT</strong> → <code>0</code></li>
-                        <li><strong>STR</strong> → <code>''</code> (empty string)</li>
-                        <li><strong>FLOAT</strong> → <code>0.0</code></li>
-                    </ul>
                 </div>
             </div>
         </div>
@@ -168,67 +195,185 @@
 </div>
 
 <!-- SQL Preview Section -->
-<div class="card border-0 shadow-sm mt-4 bg-dark text-white">
-    <div class="card-header bg-dark border-bottom border-secondary">
-        <h6 class="mb-0">
-            <i class="bi bi-code-slash me-2"></i> Generated SQL Preview
-        </h6>
+<div class="card border-0 shadow-xs mb-5" style="background-color: #fcfcfc; border: 1px solid #eee !important;">
+    <div class="card-header bg-transparent py-2 border-bottom-0">
+        <span class="text-uppercase small fw-bold text-muted" style="letter-spacing: 0.1em;">SQL Preview</span>
     </div>
-    <div class="card-body">
+    <div class="card-body py-2">
         <pre
-            class="mb-0"><code id="sqlPreview" class="text-light">-- Enter column details above to see the SQL command</code></pre>
+            class="m-0 bg-transparent ps-0"><code id="sqlPreview" class="text-primary small" style="font-family: 'Fira Code', monospace;">-- Enter column details above to see the SQL command</code></pre>
+    </div>
+</div>
+
+<!-- Modals (Stylized) -->
+
+<!-- Rename Column Modal -->
+<div class="modal fade" id="renameModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content border-0 shadow-lg">
+            <div class="modal-header border-bottom bg-light">
+                <h5 class="modal-title fw-bold text-dark"><i class="fas fa-edit me-2 text-primary"></i> Rename Column
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="POST" action="/table/{{ table_name }}/rename_column">
+                <div class="modal-body p-4">
+                    <input type="hidden" name="old_name" id="renameOldName">
+
+                    <p class="text-muted small mb-4">
+                        Renaming column <strong id="renameCurrentName" class="text-dark"></strong>. This operation will
+                        preserve all existing data.
+                    </p>
+
+                    <div class="mb-3">
+                        <label for="renameNewName" class="section-title mb-2 d-block">New Column Name</label>
+                        <input type="text" class="form-control enterprise-input" id="renameNewName" name="new_name"
+                            placeholder="Enter new name..." required>
+                    </div>
+                </div>
+                <div class="modal-footer bg-light border-top">
+                    <button type="button" class="btn btn-link text-muted text-decoration-none"
+                        data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary px-4">Save Changes</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Drop Column Modal -->
+<div class="modal fade" id="dropModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content border-0 shadow-lg">
+            <div class="modal-header border-bottom bg-light">
+                <h5 class="modal-title fw-bold text-danger"><i class="fas fa-exclamation-triangle me-2"></i> Drop Column
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="POST" action="/table/{{ table_name }}/drop_column">
+                <div class="modal-body p-4">
+                    <input type="hidden" name="column_name" id="dropColumnName">
+
+                    <div class="text-center mb-4">
+                        <div class="display-6 text-danger mb-2"><i class="fas fa-trash-alt"></i></div>
+                        <h5 class="fw-bold">Delete Column?</h5>
+                        <p class="text-muted">
+                            You are about to permanently remove <strong id="dropCurrentName" class="text-dark"></strong>
+                            from table <strong>{{ table_name }}</strong>.
+                        </p>
+                    </div>
+
+                    <div class="p-3 bg-danger bg-opacity-10 border border-danger border-opacity-25 rounded mb-4">
+                        <ul class="mb-0 small text-danger">
+                            <li>All data in this column will be <strong>erased</strong>.</li>
+                            <li>Associated indices and unique constraints will be removed.</li>
+                            <li>This action <strong>cannot be undone</strong>.</li>
+                        </ul>
+                    </div>
+
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" id="dropConfirm" required>
+                        <label class="form-check-label small fw-bold" for="dropConfirm">
+                            I understand and wish to proceed with deleting this column
+                        </label>
+                    </div>
+                </div>
+                <div class="modal-footer bg-light border-top">
+                    <button type="button" class="btn btn-link text-muted text-decoration-none"
+                        data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-danger px-4">Drop Column</button>
+                </div>
+            </form>
+        </div>
     </div>
 </div>
 
 <style>
-    .bg-gradient {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    :root {
+        --enterprise-blue: #0d6efd;
+        --enterprise-dark: #343a40;
+        --enterprise-muted: #6c757d;
+        --enterprise-border: #dee2e6;
+        --enterprise-bg: #f8f9fa;
     }
 
-    .table-hover tbody tr:hover {
-        background-color: rgba(13, 110, 253, 0.05);
-        transition: background-color 0.2s ease;
+    body {
+        background-color: var(--enterprise-bg);
     }
 
-    .card {
-        transition: transform 0.2s ease, box-shadow 0.2s ease;
+    .dashboard-title {
+        font-weight: 700;
+        color: var(--enterprise-dark);
+        letter-spacing: -0.02em;
     }
 
-    .card:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 8px 16px rgba(0, 0, 0, 0.1) !important;
+    .section-title {
+        font-size: 0.75rem;
+        text-transform: uppercase;
+        font-weight: 700;
+        color: var(--enterprise-muted);
+        letter-spacing: 0.05em;
+    }
+
+    .border-light-gray {
+        border-color: var(--enterprise-border) !important;
+    }
+
+    .shadow-xs {
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05) !important;
+    }
+
+    .enterprise-input {
+        border-color: var(--enterprise-border);
+        border-radius: 6px;
+        padding: 0.6rem 0.75rem;
+    }
+
+    .enterprise-input:focus {
+        border-color: var(--enterprise-blue);
+        box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.1);
+    }
+
+    .nav-tabs .nav-link {
+        border: none;
+        color: var(--enterprise-muted);
+        padding: 0.75rem 1.25rem;
+        border-bottom: 2px solid transparent;
+        font-size: 0.9rem;
+    }
+
+    .nav-tabs .nav-link:hover {
+        background-color: transparent;
+        color: var(--enterprise-blue);
+        border-bottom-color: #eee;
+    }
+
+    .nav-tabs .nav-link.active {
+        background-color: transparent;
+        color: var(--enterprise-blue);
+        border-bottom: 2px solid var(--enterprise-blue);
+    }
+
+    .table thead th {
+        border-top: none;
+        background-color: #fcfcfc;
     }
 
     code {
-        background-color: rgba(0, 0, 0, 0.05);
-        padding: 2px 6px;
-        border-radius: 3px;
-        font-family: 'Courier New', monospace;
+        background-color: #f8f9fa;
+        color: #d63384;
+        padding: 0.1rem 0.3rem;
+        border-radius: 4px;
+        font-size: 0.85em;
     }
 
-    .badge {
-        font-weight: 600;
-        padding: 0.35em 0.65em;
+    pre code {
+        color: var(--enterprise-blue);
+        background: transparent;
     }
 
-    pre {
-        background-color: #1e1e1e;
-        padding: 1rem;
-        border-radius: 0.375rem;
-        font-family: 'Courier New', monospace;
-        font-size: 14px;
-    }
-
-    .alert-info {
-        background-color: #cfe2ff;
-        border-color: #b6d4fe;
-        color: #084298;
-    }
-
-    .form-control:focus,
-    .form-select:focus {
-        border-color: #86b7fe;
-        box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.25);
+    .italic {
+        font-style: italic;
     }
 </style>
 
@@ -261,11 +406,10 @@
             return false;
         }
 
-        // Confirm action
+        // Confirm action handled by browser checkbox in modal usually, but for simple form:
         const colType = document.getElementById('column_type').value.toUpperCase();
         const confirmed = confirm(
-            `Are you sure you want to add column '${colName}' (${colType}) to table '{{ table_name }}'?\n\n` +
-            `This will update all existing rows with default values.`
+            `Are you sure you want to add column '${colName}' (${colType}) to table '{{ table_name }}'?`
         );
 
         if (!confirmed) {
@@ -278,5 +422,30 @@
     document.addEventListener('DOMContentLoaded', function () {
         document.getElementById('column_name').focus();
     });
+
+    // Open Rename Modal
+    function openRenameModal(columnName) {
+        document.getElementById('renameOldName').value = columnName;
+        document.getElementById('renameCurrentName').textContent = columnName;
+        document.getElementById('renameNewName').value = '';
+
+        const modal = new bootstrap.Modal(document.getElementById('renameModal'));
+        modal.show();
+
+        // Focus on new name input after modal opens
+        setTimeout(() => {
+            document.getElementById('renameNewName').focus();
+        }, 500);
+    }
+
+    // Open Drop Modal
+    function openDropModal(columnName) {
+        document.getElementById('dropColumnName').value = columnName;
+        document.getElementById('dropCurrentName').textContent = columnName;
+        document.getElementById('dropConfirm').checked = false;
+
+        const modal = new bootstrap.Modal(document.getElementById('dropModal'));
+        modal.show();
+    }
 </script>
 {% endblock %}

@@ -10,7 +10,11 @@ from minidb import MiniDB
 def print_table(data):
     """Simple standard-library implementation to print results as a table."""
     if not data or not isinstance(data, list):
-        print(data)
+        if isinstance(data, dict):
+            # Special case for DESCRIBE output or single dictionary
+            print_dict_as_table(data)
+        else:
+            print(data)
         return
 
     if len(data) == 0:
@@ -33,45 +37,101 @@ def print_table(data):
 
     # Print header
     header = " | ".join(col.ljust(widths[col]) for col in columns)
-    print("-" * len(header))
+    _print_divider(header)
     print(header)
-    print("-" * len(header))
+    _print_divider(header)
 
     # Print rows
     for row in data:
         line = " | ".join(str(row.get(col, "")).ljust(widths[col]) for col in columns)
         print(line)
     
-    print("-" * len(header))
+    _print_divider(header)
     print(f"({len(data)} rows in set)")
+
+def print_dict_as_table(data):
+    """Converts a dictionary (like DESCRIBE results) into a readable table."""
+    # Special handling for DESCRIBE results which have specific structure
+    if 'columns' in data and 'column_types' in data:
+        print(f"\nSchema Information:")
+        rows = []
+        for col in data['columns']:
+            rows.append({
+                'Column': col,
+                'Type': data['column_types'].get(col, 'UNKNOWN'),
+                'Key': 'PRI' if col == data.get('primary_key') else 'UNI' if col in data.get('unique_columns', []) else 'MUL' if col in data.get('foreign_keys', {}) else '',
+                'Details': f"Ref: {data['foreign_keys'][col]}" if col in data.get('foreign_keys', {}) else ''
+            })
+        print_table(rows)
+    else:
+        # Fallback for generic dict
+        for k, v in data.items():
+            print(f"{k}: {v}")
+
+def _print_divider(header_line):
+    print("-" * len(header_line))
 
 def main():
     db = MiniDB()
-    print("Welcome to MiniDB. Type 'exit' to quit.")
+    print("Welcome to MiniDB CLI.")
+    print("Enter SQL commands. Separate multiple statements with ';'.")
+    print("Type 'exit' or 'quit' to logout.")
     
+    buffer = ""
     while True:
         try:
-            query = input("minidb> ").strip()
+            prompt = "minidb> " if not buffer else "      -> "
+            line = input(prompt)
             
-            if not query:
+            if not line and not buffer:
                 continue
                 
-            if query.lower() in ('exit', 'quit', '.exit'):
+            if line.strip().lower() in ('exit', 'quit', '.exit'):
+                if buffer:
+                    buffer = ""
+                    print("Buffer cleared.")
+                    continue
                 print("Goodbye!")
                 break
-                
-            result = db.execute_query(query)
             
-            if isinstance(result, list):
-                print_table(result)
-            else:
-                print(result)
+            buffer += " " + line
+            
+            # Simple check for semicolon to support multi-line statements
+            if not buffer.strip().endswith(';'):
+                continue
+                
+            # Split and execute statements
+            statements = [s.strip() for s in buffer.split(';') if s.strip()]
+            buffer = ""
+            
+            for stmt in statements:
+                if len(statements) > 1:
+                    print(f"\nExecuting: {stmt}")
+                
+                try:
+                    result = db.execute_query(stmt)
+                    
+                    if isinstance(result, list):
+                        print_table(result)
+                    elif isinstance(result, dict):
+                        print_dict_as_table(result)
+                    else:
+                        print(result)
+                except Exception as stmt_error:
+                    print(f"Statement Error: {stmt_error}")
                 
         except KeyboardInterrupt:
+            if buffer:
+                buffer = ""
+                print("\nBuffer cleared.")
+                continue
+            print("\nGoodbye!")
+            break
+        except EOFError:
             print("\nGoodbye!")
             break
         except Exception as e:
-            print(f"Error: {e}")
+            print(f"CLI Error: {e}")
 
 if __name__ == "__main__":
     main()

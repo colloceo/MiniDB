@@ -4,82 +4,165 @@
 
 {% block content %}
 <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
-    <h1 class="h2"><i class="bi bi-terminal me-2"></i> SQL Console</h1>
+    <h1 class="h2 dashboard-title">
+        <i class="fas fa-terminal me-2 text-primary"></i> <span class="text-dark">SQL Console</span>
+    </h1>
 </div>
 
-<div class="card shadow-sm mb-4">
-    <div class="card-body">
+<div class="card border-light-gray shadow-xs mb-4">
+    <div class="card-body p-4">
         <form method="POST">
-            <div class="mb-3">
-                <label for="query" class="form-label fw-bold"><i class="bi bi-code-square me-1"></i> SQL Query
-                    Editor</label>
-                <textarea class="form-control" id="query" name="query" rows="6"
-                    style="font-family: 'Fira Code', 'Courier New', monospace; font-size: 0.95rem; background-color: #fcfcfc;"
-                    placeholder="SELECT * FROM students WHERE grade > 80"
+            <div class="mb-4">
+                <label for="query" class="section-title mb-2 d-block">SQL Statement Editor</label>
+                <textarea class="form-control enterprise-input" id="query" name="query" rows="10"
+                    style="font-family: 'Fira Code', monospace; font-size: 0.95rem; background-color: #fbfbfb;"
+                    placeholder="-- Write your SQL statements here...&#10;SELECT * FROM tables;&#10;-- Semicolon (;) supports multi-statement execution"
                     required>{{ last_query if last_query else '' }}</textarea>
+                <div class="form-text mt-2 small text-muted">
+                    <i class="fas fa-info-circle me-1 opacity-50"></i>
+                    Statements are executed sequentially. Support for TRANSACTIONS, JOINS, and DDL.
+                </div>
             </div>
-            <div class="d-flex justify-content-between align-items-center">
-                <button type="submit" class="btn btn-primary px-4 fw-bold shadow-sm">
-                    <i class="bi bi-play-fill me-1"></i> Run Query
+            <div class="d-flex justify-content-between align-items-center pt-2">
+                <button type="submit" class="btn btn-primary px-5 py-2 shadow-sm">
+                    <i class="fas fa-play me-2"></i> Execute
                 </button>
-                <small class="text-muted">Supports SELECT, INSERT, UPDATE, DELETE, CREATE, DESCRIBE, SHOW TABLES</small>
+                <div class="text-muted small d-none d-md-block">
+                    <span class="badge bg-light text-secondary border">F5</span> to run
+                </div>
             </div>
         </form>
     </div>
 </div>
 
 {% if result_type %}
-<div class="card shadow-sm border-0">
-    <div class="card-header bg-white border-bottom d-flex justify-content-between align-items-center py-3">
-        <h5 class="mb-0 fw-bold"><i class="bi bi-database-check me-2"></i> Execution Result</h5>
+<div class="card border-light-gray shadow-xs overflow-hidden">
+    <div class="card-header bg-white py-3 border-bottom d-flex justify-content-between align-items-center">
+        <h6 class="mb-0 fw-bold text-dark"><i class="fas fa-database me-2 text-muted"></i> Execution Hub</h6>
         {% if result_type == 'table' %}
-        <span class="badge bg-soft-primary text-primary border border-primary-subtle py-2 px-3">{{ result_data|length }}
-            rows found</span>
+        <span class="badge bg-light text-primary border px-3 py-2">{{ result_data|length }} Records</span>
+        {% elif result_type == 'multi' %}
+        <span class="badge bg-light text-info border px-3 py-2">{{ execution_results|length }} Statements</span>
         {% endif %}
     </div>
-    <div class="card-body">
+    <div class="card-body p-0">
         {% if result_type == 'error' %}
-        <div class="alert alert-danger border-0 shadow-sm d-flex align-items-center" role="alert">
-            <i class="bi bi-exclamation-octagon-fill fs-4 me-3"></i>
-            <div>
-                <strong class="d-block">Query Error</strong>
-                {{ result_data }}
+        <div class="p-4">
+            <div class="alert alert-danger border-0 shadow-sm mb-0 d-flex align-items-center" role="alert"
+                style="background-color: #fff5f5; color: #dc3545;">
+                <i class="fas fa-exclamation-circle fs-4 me-3"></i>
+                <div>
+                    <div class="fw-bold mb-1">Query Failed</div>
+                    <code class="text-danger small">{{ result_data }}</code>
+                </div>
             </div>
         </div>
+
         {% elif result_type == 'message' %}
-        <div class="alert alert-success border-0 shadow-sm d-flex align-items-center" role="alert">
-            <i class="bi bi-check-circle-fill fs-4 me-3"></i>
-            <div>
-                <strong class="d-block">Success</strong>
-                {{ result_data }}
+        <div class="p-4">
+            <div class="alert alert-success border-0 shadow-sm mb-0 d-flex align-items-center" role="alert"
+                style="background-color: #f6ffed; color: #52c41a;">
+                <i class="fas fa-check-circle fs-4 me-3"></i>
+                <div>
+                    <div class="fw-bold mb-1">Execution Successful</div>
+                    <span class="small">{{ result_data }}</span>
+                </div>
             </div>
         </div>
+
+        {% elif result_type == 'dict' %}
+        <div class="p-4 bg-light">
+            <pre class="mb-0 text-dark small"
+                style="background: transparent; border: none; font-family: 'Fira Code', monospace;">{{ result_data }}</pre>
+        </div>
+
         {% elif result_type == 'table' %}
         <div class="table-responsive">
             <table class="table table-hover align-middle mb-0">
-                <thead class="table-light">
+                <thead class="bg-light">
                     <tr>
                         {% if result_data %}
                         {% for col in result_data[0].keys() %}
-                        <th class="py-3 text-uppercase small fw-bold text-muted border-bottom-2">{{ col }}</th>
+                        <th class="py-3 px-4 text-uppercase small fw-bold text-muted" style="letter-spacing: 0.05em;">{{
+                            col }}</th>
                         {% endfor %}
                         {% endif %}
                     </tr>
                 </thead>
                 <tbody>
                     {% for row in result_data %}
-                    <tr style="font-family: 'Fira Code', 'Courier New', monospace; font-size: 0.9rem;">
+                    <tr style="font-family: 'Fira Code', monospace; font-size: 0.85rem;">
                         {% for val in row.values() %}
-                        <td class="py-3">{{ val }}</td>
+                        <td class="py-3 px-4 text-dark">{{ val }}</td>
                         {% endfor %}
                     </tr>
                     {% else %}
                     <tr>
-                        <td colspan="100%" class="text-center py-5 text-muted italic">Result set is empty.</td>
+                        <td colspan="100%" class="text-center py-5 text-muted italic">No data returned.</td>
                     </tr>
                     {% endfor %}
                 </tbody>
             </table>
+        </div>
+
+        {% elif result_type == 'multi' %}
+        <div class="p-4">
+            {% for exec_result in execution_results %}
+            <div class="mb-4 {% if not loop.last %}border-bottom pb-4{% endif %}">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <span class="section-title">Step {{ exec_result.number }}: <code
+                            class="text-primary">{{ exec_result.statement }}</code></span>
+                </div>
+
+                {% if exec_result.type == 'error' %}
+                <div
+                    class="alert alert-danger bg-opacity-10 border-danger border-opacity-25 py-2 px-3 small text-danger">
+                    <i class="fas fa-times-circle me-1"></i> {{ exec_result.result }}
+                </div>
+
+                {% elif exec_result.type == 'message' %}
+                <div
+                    class="alert alert-success bg-opacity-10 border-success border-opacity-25 py-2 px-3 small text-success">
+                    <i class="fas fa-check-circle me-1"></i> {{ exec_result.result }}
+                </div>
+
+                {% elif exec_result.type == 'table' %}
+                <div class="table-responsive border rounded">
+                    <table class="table table-sm table-hover mb-0">
+                        <thead class="bg-light">
+                            <tr>
+                                {% if exec_result.result %}
+                                {% for col in exec_result.result[0].keys() %}
+                                <th class="py-2 px-3 small fw-bold text-muted text-uppercase"
+                                    style="font-size: 0.65rem;">{{ col }}</th>
+                                {% endfor %}
+                                {% endif %}
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for row in exec_result.result %}
+                            <tr style="font-family: 'Fira Code', monospace; font-size: 0.8rem;">
+                                {% for val in row.values() %}
+                                <td class="px-3 text-dark">{{ val }}</td>
+                                {% endfor %}
+                            </tr>
+                            {% else %}
+                            <tr>
+                                <td colspan="100%" class="text-center text-muted small py-3">No records</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+
+                {% elif exec_result.type == 'dict' %}
+                <div class="bg-light p-3 rounded">
+                    <pre class="mb-0 small text-dark"
+                        style="font-family: 'Fira Code', monospace;">{{ exec_result.result }}</pre>
+                </div>
+                {% endif %}
+            </div>
+            {% endfor %}
         </div>
         {% endif %}
     </div>
@@ -87,12 +170,58 @@
 {% endif %}
 
 <style>
-    .bg-soft-primary {
-        background-color: rgba(13, 110, 253, 0.1);
+    :root {
+        --enterprise-blue: #0d6efd;
+        --enterprise-dark: #343a40;
+        --enterprise-muted: #6c757d;
+        --enterprise-border: #dee2e6;
+        --enterprise-bg: #f8f9fa;
     }
 
-    .border-bottom-2 {
-        border-bottom: 2px solid #dee2e6;
+    body {
+        background-color: var(--enterprise-bg);
+    }
+
+    .dashboard-title {
+        font-weight: 700;
+        color: var(--enterprise-dark);
+        letter-spacing: -0.02em;
+    }
+
+    .section-title {
+        font-size: 0.75rem;
+        text-transform: uppercase;
+        font-weight: 700;
+        color: var(--enterprise-muted);
+        letter-spacing: 0.05em;
+    }
+
+    .border-light-gray {
+        border-color: var(--enterprise-border) !important;
+    }
+
+    .shadow-xs {
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05) !important;
+    }
+
+    .enterprise-input {
+        border-color: var(--enterprise-border);
+        border-radius: 6px;
+        padding: 0.75rem;
+    }
+
+    .enterprise-input:focus {
+        border-color: var(--enterprise-blue);
+        box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.1);
+    }
+
+    .table thead th {
+        border-top: none;
+        background-color: #fcfcfc;
+    }
+
+    .italic {
+        font-style: italic;
     }
 </style>
 {% endblock %}

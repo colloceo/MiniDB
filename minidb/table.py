@@ -1,6 +1,7 @@
 import json
 import os
 from .exceptions import DBError, ValidationError
+from .lock_manager import LockManager
 
 class Table:
     def __init__(self, table_name, columns, primary_key=None, column_types=None, unique_columns=None, foreign_keys=None, data_dir="data"):
@@ -15,6 +16,9 @@ class Table:
         self.file_path = os.path.join(self.data_dir, f"{table_name}.json")
         self.data = []
         self.index = {} # Primary Key -> Row Data mapping
+        
+        # Initialize lock manager for concurrency control
+        self.lock_manager = LockManager(data_dir=data_dir)
         
         if not os.path.exists(self.data_dir):
             os.makedirs(self.data_dir)
@@ -38,15 +42,24 @@ class Table:
             self.index = {}
             return
         
+        # Acquire lock before reading
+        self.lock_manager.acquire_lock(self.table_name)
+        
         try:
             with open(self.file_path, "r") as f:
                 self.data = json.load(f)
             self._rebuild_index()
         except (json.JSONDecodeError, IOError) as e:
             raise DBError(f"Failed to load data for table '{self.table_name}': {e}")
+        finally:
+            # Always release lock, even if an error occurs
+            self.lock_manager.release_lock(self.table_name)
 
     def save_data(self):
         """Writes the current data list to the JSON file atomically."""
+        # Acquire lock before writing
+        self.lock_manager.acquire_lock(self.table_name)
+        
         temp_path = f"{self.file_path}.tmp"
         try:
             with open(temp_path, "w") as f:
@@ -61,6 +74,9 @@ class Table:
             if os.path.exists(temp_path):
                 os.remove(temp_path)
             raise DBError(f"Failed to save data for table '{self.table_name}': {e}")
+        finally:
+            # Always release lock, even if an error occurs
+            self.lock_manager.release_lock(self.table_name)
 
     def insert_row(self, row_data):
         """Validates and appends a row, updating the index and file."""
@@ -200,3 +216,155 @@ class Table:
         self.save_data()
         
         return f"Column '{column_name}' added to table '{self.table_name}'."
+    
+    def _validate_row(self, row_data):
+        """Validate a row without inserting it (for transaction support)."""
+        if not isinstance(row_data, dict):
+            raise ValidationError("Row data must be a dictionary.")
+        
+        # Validate columns
+        row_keys = set(row_data.keys())
+        expected_keys = set(self.columns)
+        
+        if row_keys != expected_keys:
+            missing = expected_keys - row_keys
+            extra = row_keys - expected_keys
+            error_msg = f"Data validation failed for table '{self.table_name}'."
+            if missing:
+                error_msg += f" Missing columns: {missing}."
+            if extra:
+                error_msg += f" Extra columns: {extra}."
+            raise ValidationError(error_msg)
+        
+        # Validate types
+        for col, expected_type in self.column_types.items():
+            value = row_data.get(col)
+            if value is not None:
+                if expected_type == 'int' and not isinstance(value, int):
+                    raise ValidationError(f"Column '{col}' expects type 'int', got '{type(value).__name__}'.")
+                elif expected_type == 'str' and not isinstance(value, str):
+                    raise ValidationError(f"Column '{col}' expects type 'str', got '{type(value).__name__}'.")
+    
+    def _matches_condition(self, row, column, operator, value):
+        """Check if a row matches a WHERE condition."""
+        row_value = row.get(column)
+        
+        if operator == '=':
+            return row_value == value
+        elif operator == '!=':
+            return row_value != value
+        elif operator == '>':
+            return row_value > value
+        elif operator == '<':
+            return row_value < value
+        elif operator == '>=':
+            return row_value >= value
+        elif operator == '<=':
+            return row_value <= value
+        
+        return False
+    
+    def drop_column(self, column_name):
+        """
+        Drop a column from the table.
+        
+        Args:
+            column_name: Name of the column to drop
+            
+        Raises:
+            SchemaError: If attempting to drop primary key column
+            ValidationError: If column doesn't exist
+        """
+        from .exceptions import SchemaError
+        
+        # Safety check: Cannot drop primary key
+        if column_name == self.primary_key:
+            raise SchemaError(
+                f"Cannot drop column '{column_name}': it is the primary key. "
+                f"Remove primary key constraint first or choose a different primary key."
+            )
+        
+        # Check if column exists
+        if column_name not in self.columns:
+            raise ValidationError(f"Column '{column_name}' does not exist in table '{self.table_name}'.")
+        
+        # Remove from schema
+        self.columns.remove(column_name)
+        
+        # Remove from column_types if present
+        if column_name in self.column_types:
+            del self.column_types[column_name]
+        
+        # Remove from unique_columns if present
+        if column_name in self.unique_columns:
+            self.unique_columns.remove(column_name)
+        
+        # Remove from foreign_keys if present
+        if column_name in self.foreign_keys:
+            del self.foreign_keys[column_name]
+        
+        # Remove column from all rows
+        for row in self.data:
+            if column_name in row:
+                del row[column_name]
+        
+        # Rebuild index (in case it was affected)
+        self._rebuild_index()
+        
+        # Atomic save
+        self.save_data()
+        
+        return f"Column '{column_name}' dropped from table '{self.table_name}'."
+    
+    def rename_column(self, old_name, new_name):
+        """
+        Rename a column in the table.
+        
+        Args:
+            old_name: Current name of the column
+            new_name: New name for the column
+            
+        Raises:
+            ValidationError: If old column doesn't exist or new name already exists
+        """
+        # Check if old column exists
+        if old_name not in self.columns:
+            raise ValidationError(f"Column '{old_name}' does not exist in table '{self.table_name}'.")
+        
+        # Check if new name already exists
+        if new_name in self.columns:
+            raise ValidationError(f"Column '{new_name}' already exists in table '{self.table_name}'.")
+        
+        # Update columns list
+        column_index = self.columns.index(old_name)
+        self.columns[column_index] = new_name
+        
+        # Update column_types
+        if old_name in self.column_types:
+            self.column_types[new_name] = self.column_types.pop(old_name)
+        
+        # Update unique_columns
+        if old_name in self.unique_columns:
+            unique_index = self.unique_columns.index(old_name)
+            self.unique_columns[unique_index] = new_name
+        
+        # Update foreign_keys
+        if old_name in self.foreign_keys:
+            self.foreign_keys[new_name] = self.foreign_keys.pop(old_name)
+        
+        # Update primary_key if it's being renamed
+        if self.primary_key == old_name:
+            self.primary_key = new_name
+        
+        # Rename column in all rows
+        for row in self.data:
+            if old_name in row:
+                row[new_name] = row.pop(old_name)
+        
+        # Rebuild index (primary key might have been renamed)
+        self._rebuild_index()
+        
+        # Atomic save
+        self.save_data()
+        
+        return f"Column '{old_name}' renamed to '{new_name}' in table '{self.table_name}'."

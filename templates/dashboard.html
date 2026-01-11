@@ -4,23 +4,381 @@
 
 {% block content %}
 <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
-    <h1 class="h2">Dashboard</h1>
+    <h1 class="h2 dashboard-title">
+        <i class="fas fa-tachometer-alt me-2 text-primary"></i> Dashboard
+    </h1>
+    <div class="btn-toolbar mb-2 mb-md-0">
+        <div class="btn-group me-2">
+            <button type="button" class="btn btn-sm btn-outline-secondary" onclick="location.reload()">
+                <i class="fas fa-sync-alt me-1"></i> Refresh
+            </button>
+        </div>
+    </div>
 </div>
 
-<div class="row">
+<!-- Alert Messages -->
+{% if msg %}
+<div class="alert {% if 'Error' in msg %}alert-danger{% else %}alert-success{% endif %} alert-dismissible fade show border-0 shadow-sm"
+    role="alert">
+    {{ msg }}
+    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+</div>
+{% endif %}
+
+<!-- Statistics Cards -->
+<div class="row g-4 mb-4">
+    <!-- Total Tables Card -->
     <div class="col-md-4">
-        <div class="card text-white bg-primary mb-3">
+        <div class="card stat-card border-light-gray shadow-xs">
             <div class="card-body">
-                <h5 class="card-title">Total Tables</h5>
-                <p class="card-text fs-2">{{ tables|length }}</p>
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <p class="stat-label mb-1">Total Tables</p>
+                        <h2 class="stat-number mb-0">{{ total_tables }}</h2>
+                    </div>
+                    <div class="stat-icon-container">
+                        <i class="fas fa-table text-primary"></i>
+                    </div>
+                </div>
+                <div class="mt-3">
+                    <span class="stat-subtext">
+                        <i class="fas fa-database me-1"></i> Registered schema objects
+                    </span>
+                </div>
             </div>
         </div>
     </div>
-    <!-- Add more stats here as needed -->
+
+    <!-- Total Records Card -->
+    <div class="col-md-4">
+        <div class="card stat-card border-light-gray shadow-xs">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <p class="stat-label mb-1">Total Records</p>
+                        <h2 class="stat-number mb-0">{{ total_records }}</h2>
+                    </div>
+                    <div class="stat-icon-container">
+                        <i class="fas fa-list-ul text-primary"></i>
+                    </div>
+                </div>
+                <div class="mt-3">
+                    <span class="stat-subtext">
+                        <i class="fas fa-file-alt me-1"></i> Rows across all datasets
+                    </span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Disk Usage Card -->
+    <div class="col-md-4">
+        <div class="card stat-card border-light-gray shadow-xs">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <p class="stat-label mb-1">Disk Usage</p>
+                        <h2 class="stat-number mb-0">{{ disk_usage }} <small class="text-muted fs-6">KB</small></h2>
+                    </div>
+                    <div class="stat-icon-container">
+                        <i class="fas fa-hdd text-primary"></i>
+                    </div>
+                </div>
+                <div class="mt-3">
+                    <span class="stat-subtext">
+                        <i class="fas fa-history me-1"></i> Last active: {{ last_active }}
+                    </span>
+                </div>
+            </div>
+        </div>
+    </div>
 </div>
 
-<div class="mt-4">
-    <h4>Welcome to MiniDB Admin</h4>
-    <p>Select a table from the sidebar to view data or perform operations.</p>
+<h5 class="section-title mb-3 mt-5">Quick Actions</h5>
+<!-- Quick Actions Grid -->
+<div class="row g-3 mb-5">
+    <div class="col-md-4">
+        <a href="/create_table" class="action-card text-decoration-none">
+            <div class="d-flex align-items-center">
+                <div class="action-icon-box">
+                    <i class="fas fa-plus-circle"></i>
+                </div>
+                <div class="ms-3">
+                    <div class="action-title">Create New Table</div>
+                    <div class="action-desc">Design a new relational table</div>
+                </div>
+            </div>
+        </a>
+    </div>
+    <div class="col-md-4">
+        <a href="/sql-console" class="action-card text-decoration-none">
+            <div class="d-flex align-items-center">
+                <div class="action-icon-box">
+                    <i class="fas fa-terminal"></i>
+                </div>
+                <div class="ms-3">
+                    <div class="action-title">SQL Console</div>
+                    <div class="action-desc">Execute direct SQL statements</div>
+                </div>
+            </div>
+        </a>
+    </div>
+    <div class="col-md-4">
+        <a href="/documentation" class="action-card text-decoration-none">
+            <div class="d-flex align-items-center">
+                <div class="action-icon-box">
+                    <i class="fas fa-book"></i>
+                </div>
+                <div class="ms-3">
+                    <div class="action-title">Documentation</div>
+                    <div class="action-desc">Syntax guides and examples</div>
+                </div>
+            </div>
+        </a>
+    </div>
 </div>
+
+<!-- Recent Tables Section -->
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h5 class="section-title mb-0">Database Schema</h5>
+    {% if tables %}
+    <span class="badge bg-light text-muted border">{{ tables|length }} Tables</span>
+    {% endif %}
+</div>
+
+{% if tables %}
+<div class="card border-light-gray shadow-xs overflow-hidden">
+    <div class="table-responsive">
+        <table class="table table-hover mb-0 align-middle">
+            <thead class="bg-light">
+                <tr>
+                    <th class="ps-4 py-3 text-uppercase small fw-bold text-muted border-0"
+                        style="letter-spacing: 0.05em;">Table Name</th>
+                    <th class="py-3 text-uppercase small fw-bold text-muted border-0 text-end pe-4"
+                        style="letter-spacing: 0.05em;">Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for table in tables %}
+                <tr>
+                    <td class="ps-4 py-3">
+                        <div class="d-flex align-items-center">
+                            <div class="table-avatar me-3">
+                                <i class="fas fa-table text-primary"></i>
+                            </div>
+                            <div>
+                                <div class="fw-bold text-dark">{{ table }}</div>
+                                <div class="small text-muted">Relational Dataset</div>
+                            </div>
+                        </div>
+                    </td>
+                    <td class="pe-4 text-end">
+                        <a href="/table/{{ table }}" class="btn btn-sm btn-outline-primary px-3">
+                            <i class="fas fa-eye me-1"></i> View Data
+                        </a>
+                        <a href="/table/{{ table }}/structure" class="btn btn-sm btn-outline-secondary px-3 ms-2">
+                            <i class="fas fa-project-diagram me-1"></i> Structure
+                        </a>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% else %}
+<div class="card border-light-gray shadow-xs">
+    <div class="card-body text-center py-5">
+        <div class="mb-4">
+            <i class="fas fa-layer-group fs-1 text-muted opacity-25"></i>
+        </div>
+        <h5 class="text-dark fw-bold">No Tables Found</h5>
+        <p class="text-muted mx-auto" style="max-width: 400px;">
+            The database is currently empty. Start by creating a new table or importing data via the SQL console.
+        </p>
+        <a href="/create_table" class="btn btn-primary mt-3 px-4 py-2">
+            <i class="fas fa-plus me-2"></i> Create First Table
+        </a>
+    </div>
+</div>
+{% endif %}
+
+<style>
+    :root {
+        --enterprise-blue: #0d6efd;
+        --enterprise-dark: #343a40;
+        --enterprise-muted: #6c757d;
+        --enterprise-border: #dee2e6;
+        --enterprise-bg: #f8f9fa;
+    }
+
+    body {
+        background-color: var(--enterprise-bg);
+        color: var(--enterprise-dark);
+    }
+
+    .dashboard-title {
+        font-weight: 700;
+        color: var(--enterprise-dark);
+        letter-spacing: -0.02em;
+    }
+
+    .section-title {
+        font-size: 0.875rem;
+        text-transform: uppercase;
+        font-weight: 700;
+        color: var(--enterprise-muted);
+        letter-spacing: 0.05em;
+    }
+
+    /* Stat Cards */
+    .stat-card {
+        background-color: #ffffff;
+        border: 1px solid var(--enterprise-border);
+        border-radius: 8px;
+        transition: box-shadow 0.2s ease;
+    }
+
+    .border-light-gray {
+        border-color: var(--enterprise-border) !important;
+    }
+
+    .shadow-xs {
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05) !important;
+    }
+
+    .stat-label {
+        color: var(--enterprise-muted);
+        font-size: 0.875rem;
+        font-weight: 600;
+    }
+
+    .stat-number {
+        font-weight: 800;
+        color: var(--enterprise-dark);
+        letter-spacing: -0.03em;
+        font-size: 2.5rem;
+    }
+
+    .stat-subtext {
+        font-size: 0.75rem;
+        color: var(--enterprise-muted);
+        display: block;
+    }
+
+    .stat-icon-container {
+        width: 48px;
+        height: 48px;
+        background-color: rgba(13, 110, 253, 0.05);
+        color: var(--enterprise-blue);
+        border-radius: 6px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.25rem;
+    }
+
+    /* Action Cards */
+    .action-card {
+        display: block;
+        padding: 1.5rem;
+        background-color: #ffffff;
+        border: 1px solid var(--enterprise-border);
+        border-radius: 8px;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+        transition: all 0.2s ease;
+    }
+
+    .action-card:hover {
+        border-color: #cfe2ff;
+        box-shadow: 0 4px 12px rgba(13, 110, 253, 0.1);
+        transform: translateY(-2px);
+    }
+
+    .action-icon-box {
+        width: 48px;
+        height: 48px;
+        background-color: rgba(13, 110, 253, 0.08);
+        color: var(--enterprise-blue);
+        border-radius: 8px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.5rem;
+    }
+
+    .action-title {
+        font-weight: 700;
+        color: var(--enterprise-dark);
+        font-size: 1rem;
+        margin-bottom: 0.125rem;
+    }
+
+    .action-desc {
+        color: var(--enterprise-muted);
+        font-size: 0.8125rem;
+    }
+
+    /* Table Styling */
+    .table-avatar {
+        width: 40px;
+        height: 40px;
+        background-color: var(--enterprise-bg);
+        border-radius: 6px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1rem;
+    }
+
+    .table thead th {
+        font-size: 0.75rem;
+        background-color: #fcfcfc;
+    }
+
+    .btn-outline-primary {
+        border-color: #dee2e6;
+        color: var(--enterprise-blue);
+    }
+
+    .btn-outline-primary:hover {
+        background-color: var(--enterprise-blue);
+        border-color: var(--enterprise-blue);
+        color: #ffffff;
+    }
+
+    .btn-outline-secondary {
+        border-color: #dee2e6;
+        color: var(--enterprise-muted);
+    }
+
+    .btn-outline-secondary:hover {
+        background-color: #6c757d;
+        border-color: #6c757d;
+        color: #ffffff;
+    }
+</style>
+
+<script>
+    // Animate numbers on load
+    document.addEventListener('DOMContentLoaded', function () {
+        const numbers = document.querySelectorAll('.stat-number');
+        numbers.forEach(num => {
+            const finalValue = parseInt(num.textContent);
+            if (!isNaN(finalValue)) {
+                let current = 0;
+                const increment = Math.max(1, finalValue / 25);
+                const timer = setInterval(() => {
+                    current += increment;
+                    if (current >= finalValue) {
+                        num.innerHTML = finalValue + (num.querySelector('small') ? ' ' + num.querySelector('small').outerHTML : '');
+                        clearInterval(timer);
+                    } else {
+                        num.innerHTML = Math.floor(current) + (num.querySelector('small') ? ' ' + num.querySelector('small').outerHTML : '');
+                    }
+                }, 20);
+            }
+        });
+    });
+</script>
 {% endblock %}

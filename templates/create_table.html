@@ -4,10 +4,12 @@
 
 {% block content %}
 <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
-    <h1 class="h2"><i class="bi bi-palette-fill me-2"></i> Table Designer</h1>
+    <h1 class="h2 dashboard-title">
+        <i class="fas fa-magic me-2 text-primary"></i> Table Designer
+    </h1>
     <div class="btn-toolbar mb-2 mb-md-0">
         <button type="button" class="btn btn-sm btn-outline-secondary" onclick="showSQLPreview()">
-            <i class="bi bi-code-square me-1"></i> Preview SQL
+            <i class="fas fa-code me-1"></i> Preview SQL
         </button>
     </div>
 </div>
@@ -16,63 +18,63 @@
 <div id="alertContainer"></div>
 
 <!-- Table Designer Card -->
-<div class="card border-0 shadow-sm mb-4">
-    <div class="card-header bg-primary text-white">
-        <h5 class="mb-0"><i class="bi bi-table me-2"></i> Design Your Table</h5>
-    </div>
+<div class="card border-light-gray shadow-xs mb-4">
     <div class="card-body p-4">
+        <!-- Header Section -->
+        <div class="mb-4 pb-3 border-bottom">
+            <h3 class="fw-bold text-dark mb-1">Create New Table</h3>
+            <p class="text-muted small">Define your schema, column types, and relational constraints.</p>
+        </div>
+
         <!-- Table Name -->
-        <div class="mb-4">
-            <label for="tableName" class="form-label fw-bold">
-                <i class="bi bi-tag-fill text-primary me-1"></i> Table Name
+        <div class="mb-5">
+            <label for="tableName" class="section-title mb-2 d-block">
+                Table Name
             </label>
-            <input type="text" class="form-control form-control-lg" id="tableName"
+            <input type="text" class="form-control form-control-lg enterprise-input" id="tableName"
                 placeholder="e.g., employees, products, orders" required>
-            <div class="form-text">Choose a descriptive name for your table (lowercase recommended)</div>
+            <div class="form-text mt-2">Identifiers should be lowercase and contain no spaces.</div>
         </div>
 
         <!-- Columns Section -->
-        <div class="mb-4">
+        <div class="mb-5">
             <div class="d-flex justify-content-between align-items-center mb-3">
-                <h5 class="mb-0">
-                    <i class="bi bi-list-columns-reverse text-success me-2"></i> Columns
-                </h5>
-                <button type="button" class="btn btn-success btn-sm" onclick="addColumn()">
-                    <i class="bi bi-plus-circle me-1"></i> Add Column
+                <h6 class="section-title mb-0">Columns</h6>
+                <button type="button" id="add-column-btn" class="btn btn-outline-secondary btn-sm px-3"
+                    onclick="addColumn()">
+                    <i class="fas fa-plus me-1"></i> Add Column
                 </button>
             </div>
 
-            <div id="columnsContainer">
+            <div id="columnsContainer" class="p-3 bg-light rounded-3 border">
                 <!-- Columns will be added here dynamically -->
             </div>
         </div>
 
         <!-- Foreign Keys Section -->
-        <div class="mb-4">
+        <div class="mb-5">
             <div class="d-flex justify-content-between align-items-center mb-3">
-                <h5 class="mb-0">
-                    <i class="bi bi-diagram-3 text-warning me-2"></i> Foreign Keys (Relationships)
-                </h5>
-                <button type="button" class="btn btn-warning btn-sm" onclick="addForeignKey()">
-                    <i class="bi bi-link-45deg me-1"></i> Add Relationship
+                <h6 class="section-title mb-0">Relationships (Foreign Keys)</h6>
+                <button type="button" class="btn btn-outline-secondary btn-sm px-3" onclick="addForeignKey()">
+                    <i class="fas fa-link me-1"></i> Add Relationship
                 </button>
             </div>
 
-            <div id="foreignKeysContainer">
+            <div id="foreignKeysContainer" class="p-3 bg-light rounded-3 border">
                 <!-- Foreign keys will be added here dynamically -->
-                <div class="text-muted text-center py-3" id="noForeignKeys">
-                    <i class="bi bi-info-circle me-1"></i> No foreign keys defined yet
+                <div class="text-muted text-center py-4" id="noForeignKeys">
+                    <i class="fas fa-info-circle me-1"></i> No foreign keys defined yet
                 </div>
             </div>
         </div>
 
         <!-- Action Buttons -->
-        <div class="d-grid gap-2 d-md-flex justify-content-md-end">
-            <button type="button" class="btn btn-outline-secondary" onclick="resetForm()">
-                <i class="bi bi-arrow-counterclockwise me-1"></i> Reset
+        <div class="d-flex justify-content-between align-items-center pt-4 border-top">
+            <button type="button" class="btn btn-link text-muted text-decoration-none" onclick="resetForm()">
+                <i class="fas fa-undo me-1"></i> Reset Form
             </button>
-            <button type="button" class="btn btn-primary btn-lg" onclick="createTable()">
-                <i class="bi bi-check-circle me-1"></i> Create Table
+            <button type="button" class="btn btn-primary btn-lg px-5 shadow-sm" onclick="createTable()">
+                <i class="fas fa-check-circle me-1"></i> Create Table
             </button>
         </div>
     </div>
@@ -81,18 +83,20 @@
 <!-- SQL Preview Modal -->
 <div class="modal fade" id="sqlPreviewModal" tabindex="-1">
     <div class="modal-dialog modal-lg">
-        <div class="modal-content">
-            <div class="modal-header bg-dark text-white">
-                <h5 class="modal-title"><i class="bi bi-code-slash me-2"></i> Generated SQL</h5>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+        <div class="modal-content border-0 shadow-lg">
+            <div class="modal-header border-bottom bg-light">
+                <h5 class="modal-title fw-bold text-dark"><i class="fas fa-terminal me-2 text-primary"></i> Generated
+                    SQL Preview</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
-            <div class="modal-body">
-                <pre class="bg-dark text-light p-3 rounded"><code id="sqlPreviewCode"></code></pre>
+            <div class="modal-body p-0">
+                <pre class="m-0 p-4 border-0"
+                    style="background-color: #fcfcfc;"><code id="sqlPreviewCode" class="text-dark"></code></pre>
             </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-                <button type="button" class="btn btn-primary" onclick="copySQL()">
-                    <i class="bi bi-clipboard me-1"></i> Copy SQL
+            <div class="modal-footer border-top bg-light">
+                <button type="button" class="btn btn-secondary px-4" data-bs-dismiss="modal">Close</button>
+                <button type="button" class="btn btn-primary px-4" onclick="copySQL()">
+                    <i class="fas fa-clipboard me-1"></i> Copy SQL
                 </button>
             </div>
         </div>
@@ -100,45 +104,94 @@
 </div>
 
 <style>
+    :root {
+        --enterprise-blue: #0d6efd;
+        --enterprise-dark: #343a40;
+        --enterprise-muted: #6c757d;
+        --enterprise-border: #dee2e6;
+        --enterprise-bg: #f8f9fa;
+    }
+
+    body {
+        background-color: var(--enterprise-bg);
+    }
+
+    .dashboard-title {
+        font-weight: 700;
+        color: var(--enterprise-dark);
+        letter-spacing: -0.02em;
+    }
+
+    .section-title {
+        font-size: 0.75rem;
+        text-transform: uppercase;
+        font-weight: 700;
+        color: var(--enterprise-muted);
+        letter-spacing: 0.05em;
+    }
+
+    .border-light-gray {
+        border-color: var(--enterprise-border) !important;
+    }
+
+    .shadow-xs {
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05) !important;
+    }
+
+    .enterprise-input {
+        border-color: var(--enterprise-border);
+        border-radius: 6px;
+    }
+
+    .enterprise-input:focus {
+        border-color: var(--enterprise-blue);
+        box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.1);
+    }
+
+    /* Row Styling for JS injected content */
     .column-row {
-        background: #f8f9fa;
-        border-left: 4px solid #0d6efd;
-        transition: all 0.3s ease;
+        background: #ffffff !important;
+        border: 1px solid var(--enterprise-border) !important;
+        border-left: 4px solid var(--enterprise-blue) !important;
+        transition: all 0.2s ease;
     }
 
     .column-row:hover {
-        background: #e9ecef;
-        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        transform: translateX(4px);
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
     }
 
     .fk-row {
-        background: #fff3cd;
-        border-left: 4px solid #ffc107;
-        transition: all 0.3s ease;
+        background: #ffffff !important;
+        border: 1px solid var(--enterprise-border) !important;
+        border-left: 4px solid #fd7e14 !important;
+        transition: all 0.2s ease;
     }
 
     .fk-row:hover {
-        background: #ffe69c;
-        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        transform: translateX(4px);
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
     }
 
     .btn-remove {
-        opacity: 0.6;
-        transition: opacity 0.2s;
+        color: #dc3545;
+        border-color: transparent;
     }
 
     .btn-remove:hover {
-        opacity: 1;
-    }
-
-    .form-check-input:checked {
-        background-color: #0d6efd;
-        border-color: #0d6efd;
+        background-color: #fff5f5;
+        border-color: #dc3545;
     }
 
     pre code {
-        font-family: 'Courier New', monospace;
-        font-size: 14px;
+        font-family: 'Fira Code', 'Courier New', monospace;
+        font-size: 0.95rem;
+        line-height: 1.5;
+    }
+
+    .form-check-input:checked {
+        background-color: var(--enterprise-blue);
+        border-color: var(--enterprise-blue);
     }
 </style>
 
@@ -156,41 +209,46 @@
         const container = document.getElementById('columnsContainer');
 
         const columnDiv = document.createElement('div');
-        columnDiv.className = 'column-row p-3 mb-2 rounded';
+        columnDiv.className = 'column-row p-3 mb-2 rounded-3 shadow-sm';
         columnDiv.id = `column-${columnCount}`;
 
         columnDiv.innerHTML = `
-        <div class="row g-2 align-items-center">
+        <div class="row g-3 align-items-center">
             <div class="col-md-3">
-                <input type="text" class="form-control" placeholder="Column name" 
+                <label class="small text-muted mb-1 d-block fw-bold">Name</label>
+                <input type="text" class="form-control form-control-sm" placeholder="e.g. user_id" 
                        id="colName-${columnCount}" required>
             </div>
             <div class="col-md-2">
-                <select class="form-select" id="colType-${columnCount}">
+                <label class="small text-muted mb-1 d-block fw-bold">Type</label>
+                <select class="form-select form-select-sm" id="colType-${columnCount}">
                     <option value="int">INT</option>
                     <option value="str" selected>STR</option>
                     <option value="float">FLOAT</option>
                 </select>
             </div>
             <div class="col-md-5">
-                <div class="form-check form-check-inline">
-                    <input class="form-check-input" type="checkbox" id="colPrimary-${columnCount}" 
-                           onchange="handlePrimaryKeyChange(${columnCount})">
-                    <label class="form-check-label" for="colPrimary-${columnCount}">
-                        <i class="bi bi-key-fill text-primary"></i> Primary Key
-                    </label>
-                </div>
-                <div class="form-check form-check-inline">
-                    <input class="form-check-input" type="checkbox" id="colUnique-${columnCount}">
-                    <label class="form-check-label" for="colUnique-${columnCount}">
-                        <i class="bi bi-shield-check text-success"></i> Unique
-                    </label>
+                <label class="small text-muted mb-1 d-block fw-bold">Constraints</label>
+                <div class="d-flex gap-3 mt-1">
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" id="colPrimary-${columnCount}" 
+                               onchange="handlePrimaryKeyChange(${columnCount})">
+                        <label class="form-check-label small" for="colPrimary-${columnCount}">
+                            PK
+                        </label>
+                    </div>
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" id="colUnique-${columnCount}">
+                        <label class="form-check-label small" for="colUnique-${columnCount}">
+                            Unique
+                        </label>
+                    </div>
                 </div>
             </div>
-            <div class="col-md-2 text-end">
-                <button type="button" class="btn btn-sm btn-outline-danger btn-remove" 
+            <div class="col-md-2 text-end pt-3">
+                <button type="button" class="btn btn-sm btn-remove" 
                         onclick="removeColumn(${columnCount})">
-                    <i class="bi bi-trash"></i>
+                    <i class="fas fa-trash"></i>
                 </button>
             </div>
         </div>
@@ -228,7 +286,7 @@
         if (noFKMsg) noFKMsg.style.display = 'none';
 
         const fkDiv = document.createElement('div');
-        fkDiv.className = 'fk-row p-3 mb-2 rounded';
+        fkDiv.className = 'fk-row p-3 mb-2 rounded-3 shadow-sm';
         fkDiv.id = `fk-${fkCount}`;
 
         // Get available tables
@@ -238,16 +296,16 @@
     fkDiv.innerHTML = `
         <div class="row g-2 align-items-center">
             <div class="col-md-3">
-                <label class="form-label small mb-1">Local Column</label>
+                <label class="form-label small mb-1 fw-bold text-muted">Local Column</label>
                 <select class="form-select form-select-sm" id="fkLocal-${fkCount}">
                     <option value="">Select column...</option>
                 </select>
             </div>
-            <div class="col-md-1 text-center">
-                <i class="bi bi-arrow-right text-warning fs-4"></i>
+            <div class="col-md-1 text-center pt-3">
+                <i class="fas fa-arrow-right text-muted opacity-50"></i>
             </div>
             <div class="col-md-3">
-                <label class="form-label small mb-1">References Table</label>
+                <label class="form-label small mb-1 fw-bold text-muted">Ref Table</label>
                 <select class="form-select form-select-sm" id="fkRefTable-${fkCount}" 
                         onchange="updateRefColumns(${fkCount})">
                     <option value="">Select table...</option>
@@ -255,15 +313,15 @@
                 </select>
             </div>
             <div class="col-md-3">
-                <label class="form-label small mb-1">References Column</label>
+                <label class="form-label small mb-1 fw-bold text-muted">Ref Column</label>
                 <select class="form-select form-select-sm" id="fkRefCol-${fkCount}">
                     <option value="">Select column...</option>
                 </select>
             </div>
-            <div class="col-md-2 text-end">
-                <button type="button" class="btn btn-sm btn-outline-danger btn-remove" 
+            <div class="col-md-2 text-end pt-3">
+                <button type="button" class="btn btn-sm btn-remove" 
                         onclick="removeForeignKey(${fkCount})">
-                    <i class="bi bi-trash"></i>
+                    <i class="fas fa-trash"></i>
                 </button>
             </div>
         </div>
@@ -271,7 +329,7 @@
 
     container.appendChild(fkDiv);
     updateLocalColumns(fkCount);
-}
+    }
 
     function removeForeignKey(id) {
         const element = document.getElementById(`fk-${id}`);
@@ -288,6 +346,9 @@
 
     function updateLocalColumns(fkId) {
         const select = document.getElementById(`fkLocal-${fkId}`);
+        if (!select) return;
+
+        const currentValue = select.value;
         select.innerHTML = '<option value="">Select column...</option>';
 
         // Get all defined columns
@@ -297,6 +358,7 @@
                 const option = document.createElement('option');
                 option.value = colName.value;
                 option.textContent = colName.value;
+                if (colName.value === currentValue) option.selected = true;
                 select.appendChild(option);
             }
         }
@@ -352,7 +414,9 @@
             const isUnique = document.getElementById(`colUnique-${i}`).checked;
 
             let colDef = `${name} ${type.toUpperCase()}`;
-            if (isUnique && !isPrimary) {
+            if (isPrimary) {
+                colDef += ' PRIMARY KEY';
+            } else if (isUnique) {
                 colDef += ' UNIQUE';
             }
 
@@ -457,12 +521,12 @@
             const result = await response.json();
 
             if (result.success) {
-                showAlert(`Table '${tableName}' created successfully!<br><small class="text-muted">SQL: ${result.sql}</small>`, 'success');
+                showAlert(`Table '${tableName}' created successfully!`, 'success');
                 setTimeout(() => {
                     window.location.href = `/table/${tableName}`;
-                }, 2000);
+                }, 1500);
             } else {
-                showAlert(`Error: ${result.error}<br><small class="text-muted">SQL: ${result.sql}</small>`, 'danger');
+                showAlert(`Error: ${result.error}`, 'danger');
             }
         } catch (error) {
             showAlert('Network error: ' + error.message, 'danger');
@@ -472,7 +536,7 @@
     function showAlert(message, type) {
         const container = document.getElementById('alertContainer');
         const alert = document.createElement('div');
-        alert.className = `alert alert-${type} alert-dismissible fade show`;
+        alert.className = `alert alert-${type} alert-dismissible fade show border-0 shadow-sm`;
         alert.innerHTML = `
         ${message}
         <button type="button" class="btn-close" data-bs-dismiss="alert"></button>

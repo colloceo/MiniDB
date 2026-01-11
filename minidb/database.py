@@ -1,8 +1,84 @@
 import os
 import json
+import uuid
+import copy
 from .table import Table
 from .parser import SQLParser
 from .exceptions import DBError, TableNotFoundError
+
+class TransactionManager:
+    """Manages database transactions with BEGIN, COMMIT, and ROLLBACK support."""
+    
+    def __init__(self):
+        self.session_id = None
+        self.in_transaction = False
+        self.staging_area = {}  # {table_name: {'data': [...], 'modified': True}}
+        
+    def begin(self):
+        """Start a new transaction."""
+        if self.in_transaction:
+            raise DBError("Transaction already in progress. COMMIT or ROLLBACK first.")
+        
+        self.session_id = str(uuid.uuid4())
+        self.in_transaction = True
+        self.staging_area = {}
+        return f"Transaction started (Session: {self.session_id[:8]})"
+    
+    def commit(self, tables):
+        """Commit all staged changes to disk."""
+        if not self.in_transaction:
+            raise DBError("No active transaction to commit.")
+        
+        committed_tables = []
+        try:
+            # Write all staged changes to disk
+            for table_name, staged_data in self.staging_area.items():
+                if staged_data.get('modified'):
+                    table = tables.get(table_name)
+                    if table:
+                        # Apply staged data to table
+                        table.data = staged_data['data']
+                        table._rebuild_index()
+                        table.save_data()
+                        committed_tables.append(table_name)
+            
+            # Clear transaction state
+            self._clear()
+            return f"Transaction committed. Modified tables: {committed_tables if committed_tables else 'none'}"
+        
+        except Exception as e:
+            # If commit fails, keep transaction open for retry or rollback
+            raise DBError(f"Commit failed: {e}. Transaction still active.")
+    
+    def rollback(self):
+        """Discard all staged changes."""
+        if not self.in_transaction:
+            raise DBError("No active transaction to rollback.")
+        
+        discarded_tables = list(self.staging_area.keys())
+        self._clear()
+        return f"Transaction rolled back. Discarded changes to: {discarded_tables if discarded_tables else 'none'}"
+    
+    def _clear(self):
+        """Clear transaction state."""
+        self.session_id = None
+        self.in_transaction = False
+        self.staging_area = {}
+    
+    def stage_table(self, table_name, table_data):
+        """Stage a table's data for modification."""
+        if table_name not in self.staging_area:
+            # Create a deep copy of the table data
+            self.staging_area[table_name] = {
+                'data': copy.deepcopy(table_data),
+                'modified': False
+            }
+        return self.staging_area[table_name]['data']
+    
+    def mark_modified(self, table_name):
+        """Mark a table as modified in the current transaction."""
+        if table_name in self.staging_area:
+            self.staging_area[table_name]['modified'] = True
 
 class MiniDB:
     def __init__(self, data_dir="data", metadata_file="metadata.json"):
@@ -10,6 +86,7 @@ class MiniDB:
         self.metadata_path = os.path.join(self.data_dir, metadata_file)
         self.tables = {}
         self.parser = SQLParser()
+        self.transaction = TransactionManager()  # Transaction manager
         
         if not os.path.exists(self.data_dir):
             os.makedirs(self.data_dir)
@@ -61,8 +138,15 @@ class MiniDB:
             parsed = self.parser.parse(query_string)
             cmd_type = parsed['type']
             
-            if cmd_type == 'SHOW_TABLES':
-                return self.get_tables()
+            # Transaction commands
+            if cmd_type == 'BEGIN':
+                return self.transaction.begin()
+            
+            if cmd_type == 'COMMIT':
+                return self.transaction.commit(self.tables)
+            
+            if cmd_type == 'ROLLBACK':
+                return self.transaction.rollback()
 
             if cmd_type == 'JOIN':
                 table1_name = parsed['table1']
@@ -103,30 +187,95 @@ class MiniDB:
             if cmd_type == 'INSERT':
                 # Convert list of values to dict based on table columns
                 row_dict = dict(zip(table.columns, parsed['values']))
-                table.insert_row(row_dict)
-                return f"Row inserted into '{table_name}'."
+                
+                if self.transaction.in_transaction:
+                    # In transaction: modify staging area only
+                    staged_data = self.transaction.stage_table(table_name, table.data)
+                    
+                    # Validate and add row to staged data
+                    table._validate_row(row_dict)  # Validate first
+                    staged_data.append(row_dict)
+                    self.transaction.mark_modified(table_name)
+                    
+                    return f"Row staged for insert into '{table_name}' (Transaction active)."
+                else:
+                    # Auto-commit mode: write to disk immediately
+                    table.insert_row(row_dict)
+                    return f"Row inserted into '{table_name}'."
             
             if cmd_type == 'SELECT':
-                condition = parsed.get('condition')
-                if condition:
-                    return table.select_where(condition['column'], condition['operator'], condition['value'])
-                return table.select_all()
+                # SELECT always reads from current state
+                if self.transaction.in_transaction and table_name in self.transaction.staging_area:
+                    # Read from staging area if modified in transaction
+                    staged_data = self.transaction.staging_area[table_name]['data']
+                    condition = parsed.get('condition')
+                    if condition:
+                        # Apply WHERE filter to staged data
+                        return [row for row in staged_data 
+                                if table._matches_condition(row, condition['column'], 
+                                                           condition['operator'], condition['value'])]
+                    return staged_data
+                else:
+                    # Read from disk
+                    condition = parsed.get('condition')
+                    if condition:
+                        return table.select_where(condition['column'], condition['operator'], condition['value'])
+                    return table.select_all()
             
             if cmd_type == 'DELETE':
                 condition = parsed['condition']
-                count = table.delete_where(condition['column'], condition['operator'], condition['value'])
-                return f"Deleted {count} row(s) from '{table_name}'."
+                
+                if self.transaction.in_transaction:
+                    # In transaction: modify staging area only
+                    staged_data = self.transaction.stage_table(table_name, table.data)
+                    
+                    # Filter out rows that match the condition
+                    original_count = len(staged_data)
+                    staged_data[:] = [row for row in staged_data 
+                                     if not table._matches_condition(row, condition['column'], 
+                                                                    condition['operator'], condition['value'])]
+                    count = original_count - len(staged_data)
+                    
+                    if count > 0:
+                        self.transaction.mark_modified(table_name)
+                    
+                    return f"Staged deletion of {count} row(s) from '{table_name}' (Transaction active)."
+                else:
+                    # Auto-commit mode: write to disk immediately
+                    count = table.delete_where(condition['column'], condition['operator'], condition['value'])
+                    return f"Deleted {count} row(s) from '{table_name}'."
             
             if cmd_type == 'UPDATE':
                 condition = parsed['condition']
-                count = table.update_where(
-                    condition['column'], 
-                    condition['operator'],
-                    condition['value'], 
-                    parsed['target_column'], 
-                    parsed['target_value']
-                )
-                return f"Updated {count} row(s) in '{table_name}'."
+                target_column = parsed['target_column']
+                target_value = parsed['target_value']
+                
+                if self.transaction.in_transaction:
+                    # In transaction: modify staging area only
+                    staged_data = self.transaction.stage_table(table_name, table.data)
+                    
+                    # Update rows that match the condition
+                    count = 0
+                    for row in staged_data:
+                        if table._matches_condition(row, condition['column'], 
+                                                   condition['operator'], condition['value']):
+                            row[target_column] = target_value
+                            count += 1
+                    
+                    if count > 0:
+                        self.transaction.mark_modified(table_name)
+                    
+                    return f"Staged update of {count} row(s) in '{table_name}' (Transaction active)."
+                else:
+                    # Auto-commit mode: write to disk immediately
+                    count = table.update_where(
+                        condition['column'], 
+                        condition['operator'],
+                        condition['value'], 
+                        target_column, 
+                        target_value
+                    )
+                    return f"Updated {count} row(s) in '{table_name}'."
             
             if cmd_type == 'ALTER_TABLE':
                 # Add column to table
@@ -138,6 +287,72 @@ class MiniDB:
                 self._save_metadata()
                 return result
             
+            if cmd_type == 'DROP_COLUMN':
+                # Drop column from table
+                result = table.drop_column(parsed['column_name'])
+                # Update metadata after schema change
+                self._save_metadata()
+                return result
+            
+            if cmd_type == 'RENAME_COLUMN':
+                # Rename column in table
+                result = table.rename_column(parsed['old_name'], parsed['new_name'])
+                # Update metadata after schema change
+                self._save_metadata()
+                return result
+            
+            if cmd_type == 'DROP_TABLE':
+                # Drop entire table
+                table_name = parsed['table']
+                if table_name not in self.tables:
+                    raise TableNotFoundError(f"Table '{table_name}' does not exist.")
+                
+                table = self.tables[table_name]
+                
+                # Delete the JSON file
+                if os.path.exists(table.file_path):
+                    os.remove(table.file_path)
+                
+                # Remove from tables dict
+                del self.tables[table_name]
+                
+                # Update metadata
+                self._save_metadata()
+                
+                return f"Table '{table_name}' dropped successfully."
+            
+            if cmd_type == 'RENAME_TABLE':
+                # Rename entire table
+                old_name = parsed['table']
+                new_name = parsed['new_name']
+                
+                if old_name not in self.tables:
+                    raise TableNotFoundError(f"Table '{old_name}' does not exist.")
+                
+                if new_name in self.tables:
+                    raise DBError(f"Table '{new_name}' already exists.")
+                
+                table = self.tables[old_name]
+                old_file_path = table.file_path
+                new_file_path = os.path.join(self.data_dir, f"{new_name}.json")
+                
+                # Rename the JSON file
+                if os.path.exists(old_file_path):
+                    os.rename(old_file_path, new_file_path)
+                
+                # Update table object
+                table.table_name = new_name
+                table.file_path = new_file_path
+                
+                # Update tables dict
+                self.tables[new_name] = table
+                del self.tables[old_name]
+                
+                # Update metadata
+                self._save_metadata()
+                
+                return f"Table '{old_name}' renamed to '{new_name}' successfully."
+            
             if cmd_type == 'DESCRIBE':
                 return {
                     'columns': table.columns,
@@ -146,6 +361,10 @@ class MiniDB:
                     'unique_columns': table.unique_columns,
                     'foreign_keys': table.foreign_keys
                 }
+            
+            if cmd_type == 'SHOW_TABLES':
+                table_list = self.get_tables()
+                return [{'table_name': name} for name in table_list]
                 
         except (DBError, TypeError) as e:
             return f"Error: {e}"

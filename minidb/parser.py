@@ -12,6 +12,13 @@ class SQLParser:
             'DELETE': re.compile(r"DELETE\s+FROM\s+(\w+)\s+WHERE\s+(\w+)\s*(>=|<=|!=|>|<|=)\s*(.*)", re.IGNORECASE),
             'UPDATE': re.compile(r"UPDATE\s+(\w+)\s+SET\s+(\w+)\s*=\s*(.*)\s+WHERE\s+(\w+)\s*(>=|<=|!=|>|<|=)\s*(.*)", re.IGNORECASE),
             'ALTER_TABLE': re.compile(r"ALTER\s+TABLE\s+(\w+)\s+ADD\s+(\w+)\s+(\w+)", re.IGNORECASE),
+            'DROP_COLUMN': re.compile(r"ALTER\s+TABLE\s+(\w+)\s+DROP\s+COLUMN\s+(\w+)", re.IGNORECASE),
+            'RENAME_COLUMN': re.compile(r"ALTER\s+TABLE\s+(\w+)\s+RENAME\s+COLUMN\s+(\w+)\s+TO\s+(\w+)", re.IGNORECASE),
+            'DROP_TABLE': re.compile(r"DROP\s+TABLE\s+(\w+)", re.IGNORECASE),
+            'RENAME_TABLE': re.compile(r"ALTER\s+TABLE\s+(\w+)\s+RENAME\s+TO\s+(\w+)", re.IGNORECASE),
+            'BEGIN': re.compile(r"BEGIN\s+TRANSACTION|BEGIN", re.IGNORECASE),
+            'COMMIT': re.compile(r"COMMIT", re.IGNORECASE),
+            'ROLLBACK': re.compile(r"ROLLBACK", re.IGNORECASE),
             'DESCRIBE': re.compile(r"(?:DESCRIBE|DESC)\s+(\w+)", re.IGNORECASE),
             'SHOW_TABLES': re.compile(r"SHOW\s+TABLES", re.IGNORECASE)
         }
@@ -139,10 +146,57 @@ class SQLParser:
                 'column_type': match.group(3).lower()
             }
         
+        elif cmd_type == 'DROP_COLUMN':
+            return {
+                'type': 'DROP_COLUMN',
+                'table': match.group(1),
+                'column_name': match.group(2)
+            }
+        
+        elif cmd_type == 'RENAME_COLUMN':
+            return {
+                'type': 'RENAME_COLUMN',
+                'table': match.group(1),
+                'old_name': match.group(2),
+                'new_name': match.group(3)
+            }
+        
+        elif cmd_type == 'DROP_TABLE':
+            return {
+                'type': 'DROP_TABLE',
+                'table': match.group(1)
+            }
+        
+        elif cmd_type == 'RENAME_TABLE':
+            return {
+                'type': 'RENAME_TABLE',
+                'table': match.group(1),
+                'new_name': match.group(2)
+            }
+        
         elif cmd_type == 'DESCRIBE':
             return {
                 'type': 'DESCRIBE',
                 'table': match.group(1)
+            }
+        
+        
+        elif cmd_type == 'BEGIN':
+            return {
+                'type': 'BEGIN',
+                'table': None
+            }
+        
+        elif cmd_type == 'COMMIT':
+            return {
+                'type': 'COMMIT',
+                'table': None
+            }
+        
+        elif cmd_type == 'ROLLBACK':
+            return {
+                'type': 'ROLLBACK',
+                'table': None
             }
         
         elif cmd_type == 'SHOW_TABLES':

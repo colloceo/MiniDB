@@ -90,9 +90,9 @@ INSERT INTO users VALUES (5, 'John Doe', 'john@example.com')
 ### 5. **SELECT**
 Retrieve data from a table.
 
-#### **Select All Rows:**
+#### **Select Specific Columns:**
 ```sql
-SELECT * FROM table_name
+SELECT column1, column2 FROM table_name
 ```
 
 #### **Select with WHERE Clause:**
@@ -100,7 +100,12 @@ SELECT * FROM table_name
 SELECT * FROM table_name WHERE column operator value
 ```
 
-**Operators:** `=`, `!=`, `>`, `<`, `>=`, `<=`
+**Operators:** `=`, `!=`, `>`, `<`, `>=`, `<=`, `IN`
+
+#### **SELECT with LIMIT Clause:**
+```sql
+SELECT * FROM table_name [WHERE condition] LIMIT number
+```
 
 **Examples:**
 ```sql
@@ -131,12 +136,25 @@ SELECT * FROM students id=101        -- Missing WHERE keyword
 ✅ **CORRECT:**
 ```sql
 SELECT * FROM students WHERE id = 102
-SELECT * FROM students WHERE id = 101
+SELECT name, course_id FROM students WHERE id = 101
+SELECT * FROM students LIMIT 5
 ```
 
 ---
 
-### 6. **SELECT with JOIN**
+### 6. **SELECT with NESTED SUBQUERY**
+Filter results based on the output of another query using the `IN` operator.
+
+```sql
+SELECT * FROM table1 WHERE column IN (SELECT column FROM table2 WHERE condition)
+```
+
+**Example:**
+```sql
+-- Find students enrolled in 'Computer Science'
+SELECT * FROM students 
+WHERE id IN (SELECT student_id FROM enrollments WHERE course = 'CS')
+```
 Combine data from two tables based on a related column.
 
 ```sql

@@ -12,9 +12,9 @@ All requested features have been successfully implemented, tested, and documente
 
 | Component | Status | Description |
 |-----------|--------|-------------|
-| **SQL Parser** | ✅ Complete | Regex-based parser supporting CREATE, INSERT, SELECT, UPDATE, DELETE, JOIN, DESCRIBE/DESC |
-| **Database Engine** | ✅ Complete | Multi-table coordinator with Hash Join optimization |
-| **Storage Layer** | ✅ Complete | JSON-based persistence with atomic writes and crash recovery |
+| **SQL Parser** | ✅ Complete | Regex-based parser supporting CREATE, INSERT, SELECT (with projection & subqueries), UPDATE, DELETE, JOIN, DESCRIBE/DESC, LIMIT |
+| **Database Engine** | ✅ Complete | Multi-table coordinator with Hash Join optimization and recursive subquery resolution |
+| **Storage Layer** | ✅ Complete | JSONL-based streaming persistence with O(1) appends and atomic writes |
 | **Hash Join Algorithm** | ✅ Complete | O(N+M) optimized join with automatic table size optimization |
 | **Primary Key Indexing** | ✅ Complete | O(1) hash map lookups for primary key queries |
 | **Type Enforcement** | ✅ Complete | Strict int/str type validation |
@@ -63,13 +63,17 @@ All requested features have been successfully implemented, tested, and documente
 
 ### 3. **Query Capabilities**
 - ✅ Full CRUD operations
-- ✅ Complex WHERE clauses with 6 operators (`=`, `!=`, `>`, `<`, `>=`, `<=`)
+- ✅ Complex WHERE clauses with 7 operators (`=`, `!=`, `>`, `<`, `>=`, `<=`, `IN`)
+- ✅ Nested subqueries with recursive resolution
+- ✅ Specific column projection for optimized data transfer
 - ✅ JOIN queries with ON conditions
 - ✅ Table introspection (DESCRIBE/DESC)
 
-### 4. **Performance Optimizations**
+### 4. **Scalability & Performance**
+- ✅ JSON Lines (.jsonl) storage for O(1) appends and streaming reads
 - ✅ O(1) primary key lookups via hash map indexing
 - ✅ O(N+M) hash join vs O(N²) nested loop (10x-50x faster)
+- ✅ Depth-limited query execution with the LIMIT clause
 - ✅ Automatic index rebuilding after modifications
 
 ### 5. **User Interfaces**

@@ -68,8 +68,9 @@
                     </div>
                     <div class="col-md-6">
                         <div class="feature-box">
-                            <h6 class="fw-bold mb-1">Modern UI</h6>
-                            <p class="small text-muted mb-0">Built-in visual management dashboard and SQL console.</p>
+                            <h6 class="fw-bold mb-1">Streaming Storage</h6>
+                            <p class="small text-muted mb-0">Uses JSONL for O(1) appends and memory-efficient streaming
+                                scans.</p>
                         </div>
                     </div>
                 </div>
@@ -107,13 +108,24 @@ CREATE TABLE users (
                 <!-- SELECT -->
                 <div id="select" class="mt-5">
                     <h4 class="fw-bold">SELECT & JOIN</h4>
-                    <p>Retrieves data from one or more tables. Supports filtered queries using WHERE and relational
+                    <p>Retrieves data from one or more tables. Supports filtered queries using WHERE, specific column
+                        projection, the LIMIT clause, and relational
                         stitching using JOIN.</p>
-                    <pre><code class="sql">-- Basic Select
-SELECT * FROM users WHERE id = 1
+                    <pre><code class="sql">-- Specific Column Projection
+SELECT name, email FROM users WHERE id > 10
+
+-- Depth-Limited Query
+SELECT * FROM logs LIMIT 5
 
 -- Relational Join
 SELECT * FROM users JOIN departments ON users.department_id = departments.id</code></pre>
+
+                    <h5 class="fw-bold mt-4 small text-uppercase">Nested Subqueries</h5>
+                    <p>MiniDB supports recursive subqueries using the <code>IN</code> operator. The inner query is
+                        resolved first and its results are used to filter the outer query.</p>
+                    <pre><code class="sql">-- Find students enrolled in 'Python'
+SELECT * FROM students 
+WHERE id IN (SELECT student_id FROM enrollments WHERE course = 'Python')</code></pre>
                 </div>
 
                 <!-- UPDATE/DELETE -->

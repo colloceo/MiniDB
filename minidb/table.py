@@ -1,17 +1,47 @@
 import json
 import os
+from typing import List, Dict, Any, Optional, Generator, Union
 from .exceptions import DBError, ValidationError
 from .lock_manager import LockManager
 
 class Table:
-    def __init__(self, table_name, columns, primary_key=None, column_types=None, unique_columns=None, foreign_keys=None, data_dir="data"):
+    """Represents a database table with streaming storage and indexing.
+
+    Attributes:
+        table_name (str): Name of the table.
+        columns (List[str]): List of column names.
+        primary_key (Optional[str]): Name of the primary key column.
+        column_types (Dict[str, str]): Mapping of column names to their types (e.g., 'int', 'str').
+        unique_columns (List[str]): List of columns with unique constraints.
+        foreign_keys (Dict[str, str]): Mapping of local columns to 'table.column' references.
+        data_dir (str): Directory where table data is stored.
+        file_path (str): Path to the .jsonl data file.
+        data (List[Dict[str, Any]]): In-memory cache of table rows.
+        index (Dict[Any, Dict[str, Any]]): Primary key index for O(1) lookups.
+        lock_manager (LockManager): Manager for concurrency control.
+    """
+
+    def __init__(self, table_name: str, columns: List[str], primary_key: Optional[str] = None, 
+                 column_types: Optional[Dict[str, str]] = None, unique_columns: Optional[List[str]] = None, 
+                 foreign_keys: Optional[Dict[str, str]] = None, data_dir: str = "data") -> None:
+        """Initializes the table schema and loads existing data.
+
+        Args:
+            table_name: Name of the table.
+            columns: List of column names.
+            primary_key: Optional primary key column name.
+            column_types: Optional dictionary of column types.
+            unique_columns: Optional list of unique columns.
+            foreign_keys: Optional dictionary of foreign key constraints.
+            data_dir: Directory for data storage.
+        """
         self.table_name = table_name
         self.columns = columns
         # Default primary key is the first column if not specified
         self.primary_key = primary_key if primary_key else (columns[0] if columns else None)
-        self.column_types = column_types or {} # dict: {col: type_name}
-        self.unique_columns = unique_columns or [] # list: [col, col]
-        self.foreign_keys = foreign_keys or {} # dict: {local_col: 'ref_table.ref_col'}
+        self.column_types = column_types or {}
+        self.unique_columns = unique_columns or []
+        self.foreign_keys = foreign_keys or {}
         self.data_dir = data_dir
         self.file_path = os.path.join(self.data_dir, f"{table_name}.jsonl")
         self.data = []
@@ -25,8 +55,12 @@ class Table:
             
         self.load_data()
 
-    def load_rows(self):
-        """Generator to yield rows one by one from the .jsonl file."""
+    def load_rows(self) -> Generator[Dict[str, Any], None, None]:
+        """Generator to yield rows one by one from the .jsonl file.
+
+        Yields:
+            Dict[str, Any]: A single row as a dictionary.
+        """
         if not os.path.exists(self.file_path):
             return
         
@@ -35,7 +69,7 @@ class Table:
                 if line.strip():
                     yield json.loads(line)
 
-    def _rebuild_index(self):
+    def _rebuild_index(self) -> None:
         """Rebuilds the hash map index from the in-memory data."""
         self.index = {}
         if not self.primary_key:
@@ -45,8 +79,12 @@ class Table:
             if pk_val is not None:
                 self.index[pk_val] = row
 
-    def load_data(self):
-        """Reads data from the local .jsonl file and builds index."""
+    def load_data(self) -> None:
+        """Reads data from the local .jsonl file and builds index.
+
+        Raises:
+            DBError: If loading from disk fails.
+        """
         if not os.path.exists(self.file_path):
             self.data = []
             self.index = {}
@@ -66,8 +104,12 @@ class Table:
             # Always release lock, even if an error occurs
             self.lock_manager.release_lock(self.table_name)
 
-    def save_data(self):
-        """Writes the current data list to the .jsonl file line by line."""
+    def save_data(self) -> None:
+        """Writes the current data list to the .jsonl file line by line atomically.
+
+        Raises:
+            DBError: If saving to disk fails.
+        """
         # Acquire lock before writing
         self.lock_manager.acquire_lock(self.table_name)
         
@@ -90,8 +132,15 @@ class Table:
             # Always release lock, even if an error occurs
             self.lock_manager.release_lock(self.table_name)
 
-    def append_row(self, row_data):
-        """Appends a single row to the .jsonl file."""
+    def append_row(self, row_data: Dict[str, Any]) -> None:
+        """Appends a single row to the .jsonl file.
+
+        Args:
+            row_data: The row dictionary to append.
+
+        Raises:
+            DBError: If the append operation fails.
+        """
         self.lock_manager.acquire_lock(self.table_name)
         try:
             with open(self.file_path, "a") as f:
@@ -103,8 +152,18 @@ class Table:
         finally:
             self.lock_manager.release_lock(self.table_name)
 
-    def insert_row(self, row_data):
-        """Validates and appends a row, updating the index and file."""
+    def insert_row(self, row_data: Dict[str, Any]) -> None:
+        """Validates and appends a row, updating the index and file.
+
+        Args:
+            row_data: The row dictionary to insert.
+
+        Raises:
+            ValidationError: If row contents do not match the schema.
+            TypeError: If column value types mismatch.
+            DuplicateKeyError: If primary key uniqueness is violated.
+            UniqueConstraintError: If unique constraints are violated.
+        """
         if not isinstance(row_data, dict):
             raise ValidationError("Row data must be a dictionary.")
         
@@ -155,8 +214,15 @@ class Table:
         # Append to file instead of full rewrite
         self.append_row(row_data)
 
-    def select_all(self, limit=None):
-        """Returns all rows (list, but loaded via generator)."""
+    def select_all(self, limit: Optional[int] = None) -> List[Dict[str, Any]]:
+        """Returns all rows (list, but loaded via generator).
+
+        Args:
+            limit: Maximum number of rows to return.
+
+        Returns:
+            List[Dict[str, Any]]: List of matching row dictionaries.
+        """
         results = []
         for row in self.load_rows():
             results.append(row)
@@ -164,8 +230,18 @@ class Table:
                 break
         return results
 
-    def select_where(self, column, operator, value, limit=None):
-        """Returns rows matching the condition. Uses index for '=' on primary key."""
+    def select_where(self, column: str, operator: str, value: Any, limit: Optional[int] = None) -> List[Dict[str, Any]]:
+        """Returns rows matching the condition. Uses index for '=' on primary key.
+
+        Args:
+            column: Name of the column to filter on.
+            operator: Comparison operator (e.g., '=', '>', 'IN').
+            value: Value to compare against.
+            limit: Maximum number of rows to return.
+
+        Returns:
+            List[Dict[str, Any]]: List of matching row dictionaries.
+        """
         if column == self.primary_key and operator == '=':
             row = self.index.get(value)
             return [row] if row else []
@@ -179,8 +255,17 @@ class Table:
                     break
         return results
 
-    def delete_where(self, column, operator, value):
-        """Removes rows matching the condition and saves data."""
+    def delete_where(self, column: str, operator: str, value: Any) -> int:
+        """Removes rows matching the condition and saves data.
+
+        Args:
+            column: Name of the column to filter on.
+            operator: Comparison operator.
+            value: Value to compare against.
+
+        Returns:
+            int: Number of rows deleted.
+        """
         original_count = len(self.data)
         self.data = [row for row in self.data if not self._evaluate_condition(row.get(column), operator, value)]
         deleted_count = original_count - len(self.data)
@@ -190,8 +275,20 @@ class Table:
             self.save_data()
         return deleted_count
 
-    def update_where(self, condition_col, condition_op, condition_val, target_col, target_val):
-        """Updates matching rows and saves data."""
+    def update_where(self, condition_col: str, condition_op: str, condition_val: Any, 
+                     target_col: str, target_val: Any) -> int:
+        """Updates matching rows and saves data.
+
+        Args:
+            condition_col: Column for condition.
+            condition_op: Operator for condition.
+            condition_val: Value for condition.
+            target_col: Column to update.
+            target_val: New value for column.
+
+        Returns:
+            int: Number of rows updated.
+        """
         updated_count = 0
         needs_index_rebuild = (target_col == self.primary_key)
         
@@ -206,8 +303,17 @@ class Table:
             self.save_data()
         return updated_count
 
-    def _evaluate_condition(self, row_value, operator, target_value):
-        """Helper to decide if a row matches the condition, handling type comparisons."""
+    def _evaluate_condition(self, row_value: Any, operator: str, target_value: Any) -> bool:
+        """Helper to decide if a row matches the condition, handling type comparisons.
+
+        Args:
+            row_value: The value from the row.
+            operator: Comparison operator.
+            target_value: The target value from the query.
+
+        Returns:
+            bool: True if condition matches, False otherwise.
+        """
         if row_value is None:
             return False
         
@@ -233,8 +339,16 @@ class Table:
         
         return False
 
-    def project_columns(self, rows, columns_str):
-        """Helper to return only specific columns from a list of rows."""
+    def project_columns(self, rows: List[Dict[str, Any]], columns_str: str) -> List[Dict[str, Any]]:
+        """Helper to return only specific columns from a list of rows.
+
+        Args:
+            rows: List of row dictionaries.
+            columns_str: Comma-separated list of columns, or '*'.
+
+        Returns:
+            List[Dict[str, Any]]: Projected row dictionaries.
+        """
         if columns_str == '*':
             return rows
         
@@ -245,8 +359,19 @@ class Table:
             result.append(new_row)
         return result
 
-    def add_column(self, column_name, column_type=None):
-        """Adds a new column to the table schema and updates all existing rows."""
+    def add_column(self, column_name: str, column_type: Optional[str] = None) -> str:
+        """Adds a new column to the table schema and updates all existing rows.
+
+        Args:
+            column_name: Name of the new column.
+            column_type: Type of the new column (e.g., 'int', 'str').
+
+        Returns:
+            str: Success message.
+
+        Raises:
+            ValidationError: If column already exists.
+        """
         # Check if column already exists
         if column_name in self.columns:
             raise ValidationError(f"Column '{column_name}' already exists in table '{self.table_name}'.")
@@ -273,8 +398,15 @@ class Table:
         
         return f"Column '{column_name}' added to table '{self.table_name}'."
     
-    def _validate_row(self, row_data):
-        """Validate a row without inserting it (for transaction support)."""
+    def _validate_row(self, row_data: Dict[str, Any]) -> None:
+        """Validate a row without inserting it (for transaction support).
+
+        Args:
+            row_data: Row dictionary to validate.
+
+        Raises:
+            ValidationError: If validation fails.
+        """
         if not isinstance(row_data, dict):
             raise ValidationError("Row data must be a dictionary.")
         
@@ -301,8 +433,18 @@ class Table:
                 elif expected_type == 'str' and not isinstance(value, str):
                     raise ValidationError(f"Column '{col}' expects type 'str', got '{type(value).__name__}'.")
     
-    def _matches_condition(self, row, column, operator, value):
-        """Check if a row matches a WHERE condition."""
+    def _matches_condition(self, row: Dict[str, Any], column: str, operator: str, value: Any) -> bool:
+        """Check if a row matches a WHERE condition.
+
+        Args:
+            row: Row dictionary.
+            column: Filter column.
+            operator: Filter operator.
+            value: Filter value.
+
+        Returns:
+            bool: True if matches.
+        """
         row_value = row.get(column)
         
         if operator == '=':
@@ -320,16 +462,18 @@ class Table:
         
         return False
     
-    def drop_column(self, column_name):
-        """
-        Drop a column from the table.
+    def drop_column(self, column_name: str) -> str:
+        """Drops a column from the table.
         
         Args:
-            column_name: Name of the column to drop
+            column_name: Name of the column to drop.
             
+        Returns:
+            str: Success message.
+
         Raises:
-            SchemaError: If attempting to drop primary key column
-            ValidationError: If column doesn't exist
+            SchemaError: If attempting to drop primary key column.
+            ValidationError: If column doesn't exist.
         """
         from .exceptions import SchemaError
         
@@ -372,16 +516,18 @@ class Table:
         
         return f"Column '{column_name}' dropped from table '{self.table_name}'."
     
-    def rename_column(self, old_name, new_name):
-        """
-        Rename a column in the table.
+    def rename_column(self, old_name: str, new_name: str) -> str:
+        """Renames a column in the table.
         
         Args:
-            old_name: Current name of the column
-            new_name: New name for the column
+            old_name: Current name of the column.
+            new_name: New name for the column.
             
+        Returns:
+            str: Success message.
+
         Raises:
-            ValidationError: If old column doesn't exist or new name already exists
+            ValidationError: If old column doesn't exist or new name already exists.
         """
         # Check if old column exists
         if old_name not in self.columns:

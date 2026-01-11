@@ -1,10 +1,17 @@
 import re
+from typing import Any, Dict, Optional, Union
 from .exceptions import DBError
 
 class SQLParser:
-    def __init__(self):
-        # Patterns for simple SQL-like commands
-        self.patterns = {
+    """A regex-based parser for translating SQL strings into execution payloads.
+    
+    Attributes:
+        patterns (Dict[str, re.Pattern]): Map of command types to compiled regex patterns.
+    """
+    
+    def __init__(self) -> None:
+        """Initializes the parser with predefined SQL regex patterns."""
+        self.patterns: Dict[str, re.Pattern] = {
             'CREATE': re.compile(r"CREATE\s+TABLE\s+(\w+)\s*\((.*)\)", re.IGNORECASE),
             'INSERT': re.compile(r"INSERT\s+INTO\s+(\w+)\s+VALUES\s*\((.*)\)", re.IGNORECASE),
             'SELECT_JOIN': re.compile(r"SELECT\s+\*\s+FROM\s+(\w+)\s+JOIN\s+(\w+)\s+ON\s+(\w+)\.(\w+)\s*=\s*(\w+)\.(\w+)", re.IGNORECASE),
@@ -23,8 +30,18 @@ class SQLParser:
             'SHOW_TABLES': re.compile(r"SHOW\s+TABLES", re.IGNORECASE)
         }
 
-    def parse(self, sql_string):
-        """Parses a SQL string and returns a structured dictionary."""
+    def parse(self, sql_string: str) -> Dict[str, Any]:
+        """Parses a SQL string and returns a structured dictionary.
+        
+        Args:
+            sql_string: The raw SQL string.
+            
+        Returns:
+            Dict[str, Any]: Structured representation of the SQL command.
+            
+        Raises:
+            DBError: If the command syntax is unrecognized.
+        """
         sql_string = sql_string.strip()
         
         for cmd_type, pattern in self.patterns.items():
@@ -34,8 +51,16 @@ class SQLParser:
         
         raise DBError(f"Syntax Error: Could not parse command '{sql_string}'")
 
-    def _process_match(self, cmd_type, match):
-        """Processes regex matches into structured payloads."""
+    def _process_match(self, cmd_type: str, match: re.Match) -> Dict[str, Any]:
+        """Processes regex matches into structured payloads.
+        
+        Args:
+            cmd_type: The identified command type (e.g., 'SELECT', 'CREATE').
+            match: The regex match object.
+            
+        Returns:
+            Dict[str, Any]: A payload dictionary specific to the command type.
+        """
         if cmd_type == 'CREATE':
             table_name = match.group(1)
             raw_cols = [c.strip() for c in match.group(2).split(',')]
@@ -47,7 +72,6 @@ class SQLParser:
             
             for part in raw_cols:
                 # Check if this is a FOREIGN KEY constraint
-                # Pattern: FOREIGN KEY (col) REFERENCES table(col)
                 fk_match = re.match(r'FOREIGN\s+KEY\s*\((\w+)\)\s+REFERENCES\s+(\w+)\s*\((\w+)\)', part, re.IGNORECASE)
                 if fk_match:
                     local_col = fk_match.group(1)
@@ -140,7 +164,6 @@ class SQLParser:
                 }
             }
         
-        
         elif cmd_type == 'ALTER_TABLE':
             return {
                 'type': 'ALTER_TABLE',
@@ -183,35 +206,29 @@ class SQLParser:
                 'table': match.group(1)
             }
         
-        
         elif cmd_type == 'BEGIN':
-            return {
-                'type': 'BEGIN',
-                'table': None
-            }
+            return {'type': 'BEGIN', 'table': None}
         
         elif cmd_type == 'COMMIT':
-            return {
-                'type': 'COMMIT',
-                'table': None
-            }
+            return {'type': 'COMMIT', 'table': None}
         
         elif cmd_type == 'ROLLBACK':
-            return {
-                'type': 'ROLLBACK',
-                'table': None
-            }
+            return {'type': 'ROLLBACK', 'table': None}
         
         elif cmd_type == 'SHOW_TABLES':
-            return {
-                'type': 'SHOW_TABLES',
-                'table': None
-            }
+            return {'type': 'SHOW_TABLES', 'table': None}
         
-        return None
+        return {}
 
-    def _infer_type(self, value):
-        """Helper to convert string values from SQL to Python types."""
+    def _infer_type(self, value: str) -> Union[int, float, str]:
+        """Helper to convert string values from SQL to appropriate Python types.
+        
+        Args:
+            value: The string value from the SQL command.
+            
+        Returns:
+            Union[int, float, str]: The converted value.
+        """
         # Remove quotes if present
         if (value.startswith("'") and value.endswith("'")) or \
            (value.startswith('"') and value.endswith('"')):

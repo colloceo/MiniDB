@@ -2,20 +2,35 @@ import os
 import json
 import uuid
 import copy
+from typing import List, Dict, Any, Optional, Union, Tuple
 from .table import Table
 from .parser import SQLParser
 from .exceptions import DBError, TableNotFoundError
 
 class TransactionManager:
-    """Manages database transactions with BEGIN, COMMIT, and ROLLBACK support."""
+    """Manages database transactions with BEGIN, COMMIT, and ROLLBACK support.
     
-    def __init__(self):
-        self.session_id = None
-        self.in_transaction = False
-        self.staging_area = {}  # {table_name: {'data': [...], 'modified': True}}
+    Attributes:
+        session_id (Optional[str]): Unique ID for the current transaction session.
+        in_transaction (bool): True if a transaction is currently active.
+        staging_area (Dict[str, Dict[str, Any]]): Buffer for uncommitted changes.
+    """
+    
+    def __init__(self) -> None:
+        """Initializes the transaction manager in an idle state."""
+        self.session_id: Optional[str] = None
+        self.in_transaction: bool = False
+        self.staging_area: Dict[str, Dict[str, Any]] = {}  # {table_name: {'data': [...], 'modified': True}}
         
-    def begin(self):
-        """Start a new transaction."""
+    def begin(self) -> str:
+        """Starts a new transaction.
+        
+        Returns:
+            str: Confirmation message with session ID.
+            
+        Raises:
+            DBError: If a transaction is already in progress.
+        """
         if self.in_transaction:
             raise DBError("Transaction already in progress. COMMIT or ROLLBACK first.")
         
@@ -24,8 +39,18 @@ class TransactionManager:
         self.staging_area = {}
         return f"Transaction started (Session: {self.session_id[:8]})"
     
-    def commit(self, tables):
-        """Commit all staged changes to disk."""
+    def commit(self, tables: Dict[str, Table]) -> str:
+        """Commits all staged changes to disk.
+        
+        Args:
+            tables: Dictionary of table objects to update.
+            
+        Returns:
+            str: Summary of the commit operation.
+            
+        Raises:
+            DBError: If no transaction is active or commit fails.
+        """
         if not self.in_transaction:
             raise DBError("No active transaction to commit.")
         
@@ -50,8 +75,15 @@ class TransactionManager:
             # If commit fails, keep transaction open for retry or rollback
             raise DBError(f"Commit failed: {e}. Transaction still active.")
     
-    def rollback(self):
-        """Discard all staged changes."""
+    def rollback(self) -> str:
+        """Discards all staged changes.
+        
+        Returns:
+            str: Summary of the rollback operation.
+            
+        Raises:
+            DBError: If no active transaction exists.
+        """
         if not self.in_transaction:
             raise DBError("No active transaction to rollback.")
         
@@ -59,14 +91,22 @@ class TransactionManager:
         self._clear()
         return f"Transaction rolled back. Discarded changes to: {discarded_tables if discarded_tables else 'none'}"
     
-    def _clear(self):
-        """Clear transaction state."""
+    def _clear(self) -> None:
+        """Internal helper to reset the transaction state."""
         self.session_id = None
         self.in_transaction = False
         self.staging_area = {}
     
-    def stage_table(self, table_name, table_data):
-        """Stage a table's data for modification."""
+    def stage_table(self, table_name: str, table_data: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+        """Stages a table's data for modification within a transaction.
+        
+        Args:
+            table_name: Name of the table to stage.
+            table_data: The current in-memory rows of the table.
+            
+        Returns:
+            List[Dict[str, Any]]: A deep copy of the row data for staging.
+        """
         if table_name not in self.staging_area:
             # Create a deep copy of the table data
             self.staging_area[table_name] = {
@@ -75,26 +115,46 @@ class TransactionManager:
             }
         return self.staging_area[table_name]['data']
     
-    def mark_modified(self, table_name):
-        """Mark a table as modified in the current transaction."""
+    def mark_modified(self, table_name: str) -> None:
+        """Marks a staged table as modified so it can be committed.
+        
+        Args:
+            table_name: Name of the table to mark.
+        """
         if table_name in self.staging_area:
             self.staging_area[table_name]['modified'] = True
 
 class MiniDB:
-    def __init__(self, data_dir="data", metadata_file="metadata.json"):
+    """The central engine for managing multiple tables and executing queries.
+    
+    Attributes:
+        data_dir (str): Directory where all data and metadata files are stored.
+        metadata_path (str): Full path to the metadata.json file.
+        tables (Dict[str, Table]): Map of table names to Table objects.
+        parser (SQLParser): The SQL command parser.
+        transaction (TransactionManager): Manager for atomic operations.
+    """
+    
+    def __init__(self, data_dir: str = "data", metadata_file: str = "metadata.json") -> None:
+        """Initializes the database engine and loads metadata.
+        
+        Args:
+            data_dir: Base directory for storage.
+            metadata_file: Filename for schema persistence.
+        """
         self.data_dir = data_dir
         self.metadata_path = os.path.join(self.data_dir, metadata_file)
-        self.tables = {}
+        self.tables: Dict[str, Table] = {}
         self.parser = SQLParser()
-        self.transaction = TransactionManager()  # Transaction manager
+        self.transaction = TransactionManager()
         
         if not os.path.exists(self.data_dir):
             os.makedirs(self.data_dir)
             
         self._load_metadata()
 
-    def _load_metadata(self):
-        """Loads table definitions from metadata.json."""
+    def _load_metadata(self) -> None:
+        """Internal method to load table schemas from metadata.json."""
         if not os.path.exists(self.metadata_path):
             return
         
@@ -114,8 +174,12 @@ class MiniDB:
         except Exception as e:
             print(f"Warning: Failed to load metadata: {e}")
 
-    def _save_metadata(self):
-        """Saves current table definitions to metadata.json."""
+    def _save_metadata(self) -> None:
+        """Internal method to persist current table schemas to metadata.json.
+        
+        Raises:
+            DBError: If saving fails.
+        """
         metadata = {}
         for name, table in self.tables.items():
             metadata[name] = {
@@ -132,8 +196,15 @@ class MiniDB:
         except IOError as e:
             raise DBError(f"Failed to save metadata: {e}")
 
-    def execute_query(self, query_string):
-        """Parses and executes a SQL query."""
+    def execute_query(self, query_string: str) -> Any:
+        """Parses and executes a SQL query on the system.
+        
+        Args:
+            query_string: The raw SQL string to execute.
+            
+        Returns:
+            Any: The result of the query (list of rows, success message, or error string).
+        """
         try:
             parsed = self.parser.parse(query_string)
             cmd_type = parsed['type']
@@ -395,12 +466,27 @@ class MiniDB:
         except Exception as e:
             return f"Unexpected Error: {e}"
 
-    def get_tables(self):
-        """Returns a list of all table names."""
+    def get_tables(self) -> List[str]:
+        """Returns a list of all table names currently registered in the database.
+        
+        Returns:
+            List[str]: List of table names.
+        """
         return list(self.tables.keys())
 
-    def _nested_loop_join(self, left_rows, right_rows, left_on, right_on):
-        """Simple Nested Loop Join implementation."""
+    def _nested_loop_join(self, left_rows: List[Dict[str, Any]], right_rows: List[Dict[str, Any]], 
+                          left_on: Tuple[str, str], right_on: Tuple[str, str]) -> List[Dict[str, Any]]:
+        """Performs a simple Nested Loop Join. Complexity: O(N*M).
+        
+        Args:
+            left_rows: Rows from the left table.
+            right_rows: Rows from the right table.
+            left_on: (table_name, column_name) for left join condition.
+            right_on: (table_name, column_name) for right join condition.
+            
+        Returns:
+            List[Dict[str, Any]]: Joined results.
+        """
         result = []
         l_table, l_col = left_on
         r_table, r_col = right_on
@@ -411,8 +497,19 @@ class MiniDB:
                     result.append(self._merge_rows(l_row, r_row, r_table))
         return result
 
-    def _hash_join(self, left_rows, right_rows, left_on, right_on):
-        """Optimized Hash Join implementation O(N+M)."""
+    def _hash_join(self, left_rows: List[Dict[str, Any]], right_rows: List[Dict[str, Any]], 
+                   left_on: Tuple[str, str], right_on: Tuple[str, str]) -> List[Dict[str, Any]]:
+        """Performs an optimized Hash Join. Complexity: O(N+M).
+        
+        Args:
+            left_rows: Rows from the left table.
+            right_rows: Rows from the right table.
+            left_on: (table_name, column_name) for left condition.
+            right_on: (table_name, column_name) for right condition.
+            
+        Returns:
+            List[Dict[str, Any]]: Joined results.
+        """
         result = []
         l_table, l_col = left_on
         r_table, r_col = right_on
@@ -429,7 +526,7 @@ class MiniDB:
             build_table, probe_table = r_table, l_table
             swapped = True
             
-        hash_map = {}
+        hash_map: Dict[Any, List[Dict[str, Any]]] = {}
         for row in build_rows:
             key = row.get(build_col)
             if key not in hash_map:
@@ -448,8 +545,17 @@ class MiniDB:
                         result.append(self._merge_rows(b_row, p_row, probe_table))
         return result
 
-    def _merge_rows(self, left_row, right_row, r_table_name):
-        """Helper to merge two rows and handle column name collisions."""
+    def _merge_rows(self, left_row: Dict[str, Any], right_row: Dict[str, Any], r_table_name: str) -> Dict[str, Any]:
+        """Helper to merge two rows and handle column name collisions.
+        
+        Args:
+            left_row: Row from the left table.
+            right_row: Row from the right table.
+            r_table_name: Name of the right table for prefixing collisions.
+            
+        Returns:
+            Dict[str, Any]: Merged row dictionary.
+        """
         merged = left_row.copy()
         for k, v in right_row.items():
             if k in merged:
@@ -458,7 +564,20 @@ class MiniDB:
                 merged[k] = v
         return merged
 
-    def _create_table(self, name, columns, column_types=None, unique_columns=None, foreign_keys=None):
+    def _create_table(self, name: str, columns: List[str], column_types: Optional[Dict[str, str]] = None, 
+                      unique_columns: Optional[List[str]] = None, foreign_keys: Optional[Dict[str, str]] = None) -> str:
+        """Internal method to create and initialize a new table.
+        
+        Args:
+            name: Table name.
+            columns: List of column names.
+            column_types: Map of col -> type.
+            unique_columns: List of columns with uniqueness constraints.
+            foreign_keys: Reference map.
+            
+        Returns:
+            str: Status message.
+        """
         if name in self.tables:
             return f"Error: Table '{name}' already exists."
         

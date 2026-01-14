@@ -2,7 +2,7 @@
 
 **MiniDB** is a lightweight, relational database engine built from scratch in Python. It was designed to demonstrate core database internals—including Disk-Based Binary Indexing (O(log N)), Hash Joins, and Atomic Persistence—without relying on external database libraries like SQLite.
 
-> **Note:** This project was built for the **Pesapal Junior Dev Challenge '26**.
+> **Note:** This project has been built for the **Pesapal Junior Dev Challenge '26**.
 
 ## 🏗️ Architecture Overview
 
@@ -161,7 +161,7 @@ MiniDB> EXIT;
 ```
 
 ## 🙏 Acknowledgements
-This project was built as part of the Pesapal Junior Dev Challenge '26.
+This project has been built as part of the Pesapal Junior Dev Challenge '26.
 - **Architecture & Logic**: Designed by Collins Odhiambo Otieno.
 - **Code Generation & Optimization**: AI (Gemini 2.0) assisted in developing regex patterns, refactoring algorithms, and generating premium UI components.
 
